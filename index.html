@@ -331,7 +331,7 @@
       <span class="cat-tag">viejo mañoso</span>
       <ul>
         <li><b>Alimento seco:</b> Royal Canin Hypoallergenic. Si no quiere, probar Anallergenic.</li>
-        <li><b>Alimento húmedo:</b> un poco de Royal Canin + 2 pastillas de suplemento trituradas. Si no come el húmedo, agregarle unos porotitos de alimento seco.</li>
+        <li><b>Alimento húmedo:</b> un poco de Royal Canin + 2 pastillas de suplemento trituradas. Si no lo come, agregarle unos porotitos de alimento seco.</li>
         <li>Cuanto más coma, mejor — no te preocupes si no vacía el plato.</li>
         <li>Come al lado del mueble blanco.</li>
         <li>Su taza con alimento es <b>verde agua</b>.</li>
@@ -357,13 +357,16 @@
     <h3 class="section-title">Cómo servir</h3>
     <p class="section-note">Los suplementos son <b>2 pastillas trituradas</b> por gato, mezcladas dentro del alimento húmedo.</p>
     <div class="standing-note">🍽️
-      <div><b>Porciones (alimento seco):</b> se sirve de a poco, apenas cubriendo la base del plato. Se les puede volver a servir cuando piden, pero no si solo pide Zoe (está a dieta).</div>
+      <div><b>Porciones (alimento seco):</b> Se sirve de a poco, apenas cubriendo la base del plato. Se les puede volver a servir cuando piden, pero no si solo pide Zoe (está a dieta).</div>
+    </div>
+    <div class="standing-note" style="background:var(--aqua-soft); border-color:#B7DDD6;">🧍
+      <div><b>Quedate en la cocina un rato mientras comen:</b> Si te vas, Milo se distrae y se va sin terminar, y Zoe le come la comida a él.</div>
     </div>
     <div class="standing-note" style="background:var(--mustard-soft); border-color:#E4CE93;">🥣
-      <div><b>Si te vas muchas horas durante el día:</b> dejales el gallito (dispenser) con alimento seco en el living, para que no se queden sin comer. A la noche podés usarlo también para que no maúllen. No hace falta llenarlo — con la mitad o menos alcanza.</div>
+      <div><b>Si te vas muchas horas durante el día:</b> Dejales el gallito (dispenser) con alimento seco en el living, para que no se queden sin comer. A la noche podés usarlo también para que no maúllen. No hace falta llenarlo — con la mitad o menos alcanza.</div>
     </div>
     <div class="standing-note" style="background:var(--teal-soft); border-color:#BCD2CB;">💧
-      <div><b>Agua:</b> hay en la cocina y en el cuarto — chequear siempre que esté limpia y disponible.</div>
+      <div><b>Agua:</b> Hay en la cocina y en el cuarto — chequear siempre que esté limpia y disponible.</div>
     </div>
   </div>
 
@@ -388,13 +391,13 @@
       </div>
     </div>
     <div class="standing-note">🌿
-      <div><b>Recordatorio:</b> dejar la terraza cerrada cuando no estés vos, y el jardín de invierno siempre abierto.</div>
+      <div><b>Recordatorio:</b> Dejar la terraza cerrada cuando no estés, y el jardín de invierno siempre abierto.</div>
     </div>
     <div class="standing-note" style="background:var(--mustard-soft); border-color:#E4CE93;">🐾
-      <div><b>Piedras:</b> limpiar al menos una vez durante estos días para que no moleste el olor. Se levanta la mugre, se tira en una bolsita, se respira aire limpio.</div>
+      <div><b>Piedras:</b> Limpiar al menos una vez durante estos días para que no moleste el olor. Se levanta la mugre, se tira en una bolsita, se respira aire limpio.</div>
     </div>
     <div class="standing-note" style="background:var(--teal-soft); border-color:#BCD2CB;">🧶
-      <div><b>Jugar:</b> siempre bienvenido cuando quieras. Puede que te ignoren — es normal, son gatos.</div>
+      <div><b>Jugar:</b> Siempre bienvenido cuando quieras. Puede que te ignoren — es normal, son gatos.</div>
     </div>
   </div>
 
@@ -440,6 +443,15 @@
     <h2>Un aviso</h2>
     <p>Si hoy te vas a ir muchas horas, o va a ser de noche, no te olvides de dejarles el gallito con alimento seco en el living (con la mitad o menos alcanza).</p>
     <button class="btn" id="gallitoClose">Entendido</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="victoryOverlay">
+  <div class="modal">
+    <div class="cookie">🏆</div>
+    <h2>¡Sobrevivieron!</h2>
+    <p>Completaste todo el recorrido. Milo, Zoe y vos llegaron enteros hasta acá — misión cumplida.</p>
+    <button class="btn" id="victoryClose">Genial</button>
   </div>
 </div>
 
@@ -628,6 +640,10 @@ async function resetProgress(){
   await saveState();
 }
 
+function isJourneyComplete(){
+  return days.every(d => getJourneyTasksForDay(d.id).every(t => state[d.id][t.key]));
+}
+
 function attachTaskHandlers(){
   document.querySelectorAll(".task").forEach(el => {
     el.addEventListener("click", async () => {
@@ -637,12 +653,16 @@ function attachTaskHandlers(){
       const isSecoTask = secoKeys.includes(key);
       const wasSecoDone = secoKeys.every(k => state[day][k]);
       const secoCheckedBefore = secoKeys.filter(k => state[day][k]).length;
+      const wasJourneyComplete = isJourneyComplete();
       const turningOn = !state[day][key];
       state[day][key] = turningOn;
       updateUI();
       await saveState();
       const isSecoDoneNow = secoKeys.every(k => state[day][k]);
-      if(isSecoDoneNow && !wasSecoDone){
+      const isJourneyCompleteNow = isJourneyComplete();
+      if(isJourneyCompleteNow && !wasJourneyComplete){
+        showVictory();
+      } else if(isSecoDoneNow && !wasSecoDone){
         showCelebration(day);
       } else if(turningOn && isSecoTask && secoCheckedBefore === 0){
         showGallitoReminder();
@@ -666,6 +686,14 @@ function showGallitoReminder(){
 document.getElementById("gallitoClose").addEventListener("click", () => {
   document.getElementById("gallitoOverlay").classList.remove("show");
 });
+
+function showVictory(){
+  document.getElementById("victoryOverlay").classList.add("show");
+}
+document.getElementById("victoryClose").addEventListener("click", () => {
+  document.getElementById("victoryOverlay").classList.remove("show");
+});
+
 
 document.querySelectorAll(".day-tab").forEach(tab => {
   tab.addEventListener("click", () => {
