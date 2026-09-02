@@ -676,11 +676,13 @@ function updateJourney(){
   placeAtFraction(document.getElementById("avatarMarker"), completed / TOTAL_TASKS);
   const captionEl = document.getElementById("journeyCaption");
   let msg = "recién arrancando";
-  if(completed === TOTAL_TASKS) msg = "¡llegaste a la meta! 🎉";
+  if(completed === TOTAL_TASKS) msg = '¡llegaste a la meta! 🎉 <button id="verFestejoBtn" style="margin-left:6px; border:none; background:var(--success); color:#fff; font-family:inherit; font-size:12px; font-weight:700; padding:3px 10px; border-radius:100px; cursor:pointer;">Ver festejo</button>';
   else if(completed >= CUM_AFTER_DAY[2]) msg = "último tramo";
   else if(completed >= CUM_AFTER_DAY[1]) msg = "vas muy bien";
   else if(completed > 0) msg = "en marcha";
   captionEl.innerHTML = `<b>${completed}</b> de <b>${TOTAL_TASKS}</b> tareas — ${msg}`;
+  const verFestejoBtn = document.getElementById("verFestejoBtn");
+  if(verFestejoBtn) verFestejoBtn.addEventListener("click", showVictory);
 }
 
 const fortunes = [
