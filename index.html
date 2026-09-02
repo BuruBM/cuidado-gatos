@@ -206,7 +206,7 @@
   .day-progress-fill{height:100%; background:var(--success); width:0%; transition:width .3s ease;}
 
   .modal-overlay{
-    position:fixed; inset:0; background:rgba(43,38,32,0.55);
+    position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(43,38,32,0.55);
     display:none; align-items:center; justify-content:center; z-index:50; padding:20px;
   }
   .modal-overlay.show{display:flex;}
@@ -224,6 +224,15 @@
     font-family:'Fraunces',serif; font-style:italic; font-size:14.5px; margin-bottom:20px;
     border:1px solid #E4CE93;
   }
+
+  .victory-modal{overflow:hidden; position:relative;}
+  .confetti-layer{position:absolute; top:0; left:0; right:0; bottom:0; pointer-events:none; overflow:hidden; z-index:2;}
+  .confetti-piece{position:absolute; top:-10px; opacity:0.95; animation:confettiFall linear forwards;}
+  @keyframes confettiFall{ to{ transform:translateY(280px) rotate(340deg); opacity:0; } }
+  .victory-scene{position:relative; margin:-6px auto 6px; max-width:260px;}
+  .victory-scene svg{width:100%; height:auto; display:block;}
+  .victory-bounce{animation:victoryBounce 0.55s ease-in-out infinite alternate; transform-box:fill-box; transform-origin:bottom center;}
+  @keyframes victoryBounce{ from{ transform:translateY(0); } to{ transform:translateY(-3px); } }
 
 
   .img-gallery{display:flex; gap:10px; margin-top:10px; flex-wrap:wrap;}
@@ -447,11 +456,152 @@
 </div>
 
 <div class="modal-overlay" id="victoryOverlay">
-  <div class="modal">
-    <div class="cookie">🏆</div>
+  <div class="modal victory-modal">
+    <div class="confetti-layer" id="confettiLayer"></div>
+    <div class="victory-scene">
+      <svg viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg">
+        <g transform="translate(30,35)">
+          <g transform="scale(1.9)">
+            <g class="victory-bounce" style="animation-delay:0s">
+              <rect x="0.00" y="0.00" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="25.20" y="0.00" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="0.00" y="4.20" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="4.20" y="4.20" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="21.00" y="4.20" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="25.20" y="4.20" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="0.00" y="8.40" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="4.20" y="8.40" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="8.40" y="8.40" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="12.60" y="8.40" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="16.80" y="8.40" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="21.00" y="8.40" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="25.20" y="8.40" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="0.00" y="12.60" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="4.20" y="12.60" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="8.40" y="12.60" width="4.20" height="4.20" fill="#2B2620"/>
+        <rect x="12.60" y="12.60" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="16.80" y="12.60" width="4.20" height="4.20" fill="#2B2620"/>
+        <rect x="21.00" y="12.60" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="25.20" y="12.60" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="0.00" y="16.80" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="4.20" y="16.80" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="8.40" y="16.80" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="12.60" y="16.80" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="16.80" y="16.80" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="21.00" y="16.80" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="25.20" y="16.80" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="4.20" y="21.00" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="8.40" y="21.00" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="12.60" y="21.00" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="16.80" y="21.00" width="4.20" height="4.20" fill="#3E9C8E"/>
+        <rect x="21.00" y="21.00" width="4.20" height="4.20" fill="#3E9C8E"/>
+            </g>
+          </g>
+        </g>
+        <g transform="translate(110,50)">
+          <g transform="scale(1.7)">
+            <g class="victory-bounce" style="animation-delay:0.15s">
+              
+          <ellipse cx="0" cy="15" rx="14" ry="4.5" fill="rgba(43,38,32,0.15)"/>
+          <rect x="-10.40" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-7.80" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-5.20" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-2.60" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="0.00" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="2.60" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="5.20" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="7.80" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-10.40" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-7.80" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-5.20" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-2.60" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="0.00" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="2.60" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="5.20" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-10.40" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-7.80" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-5.20" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-2.60" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="0.00" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="2.60" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="5.20" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-10.40" y="4.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-7.80" y="4.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-5.20" y="4.40" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="-2.60" y="4.40" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="0.00" y="4.40" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="2.60" y="4.40" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="5.20" y="4.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="7.80" y="4.40" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-10.40" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="-7.80" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="-5.20" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="-2.60" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="0.00" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="2.60" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="5.20" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="7.80" y="7.00" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="-10.40" y="9.60" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="-7.80" y="9.60" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="5.20" y="9.60" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="7.80" y="9.60" width="2.60" height="2.60" fill="#C79A2E"/>
+          <rect x="-10.40" y="12.20" width="2.60" height="2.60" fill="#4A3728"/>
+          <rect x="-7.80" y="12.20" width="2.60" height="2.60" fill="#4A3728"/>
+          <rect x="5.20" y="12.20" width="2.60" height="2.60" fill="#4A3728"/>
+          <rect x="7.80" y="12.20" width="2.60" height="2.60" fill="#4A3728"/>
+          <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAPAAAADwCAYAAAA+VemSAAAHtUlEQVR4nO3cUXUjVxaF4etZDaAgFARBEARDMARDaAiGYAiCIAgFoSAUg8xDR2s8mUnau9uya0vf95SHo5Ii+1+3O+vkPmzbNoBO//rqDwD8OgFDMQFDMQFDMQFDMQFDMQFDMQFDMQFDMQFDMQFDsW9f/QHuXbqLfj6f/4ievy7R88eYounD8fAQzR+O0fP5Z05gKCZgKCZgKCZgKCZgKCZgKCZgKCZgKCZgKCZgKCZgKPZwb/dCr+sazS/Lku0eb9nz12WJ5rfw88/zFM2v6xbNL9n4eHp6SuejXet74wSGYgKGYgKGYgKGYgKGYgKGYgKGYgKGYgKGYgKGYgKGYvW70Onn//78fNXd5tQ8TdH8FM6n3082PcYS7k5v4b3T59NrtAudfj/tnMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBQ7NtXf4DPdu3d73S3OVwNvvrnT4XXTo81/PwvLy/R7np6j/Q8z9Hn2RsnMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBQTMBSr34VOd2XTXeL4HuZoeow5XYaes/Etvbc53rWewvns+afTOZo/L0v0+/D9+Tl6/vF4jHatr80JDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMV2twu9rms0fz6fo/kpmh4j3d1NV4mX8AXpvdPpLvcU/vuu4a51vCweSne/2zmBoZiAoZiAoZiAoZiAoZiAoZiAoZiAoZiAoZiAoZiAodjudqHTe4l3do3x2MIXTNnjY+Eq9DiELzges/k5Gx8vpzWaT3fLt3D3fm+cwFBMwFBMwFBMwFBMwFBMwFBMwFBMwFBMwFBMwFBMwFBsd7vQ8zxH8+mub3pP8iF7fLxLfDjM0Xx6L3S8zB0//7qejtn89/Mazc+Hw0P2DvviBIZiAoZiAoZiAoZiAoZiAoZiAoZiAoZiAoZiAoZiAoZiu9uFTk3THM0/Pz1mb7Ccsvlw93hZ1mh+OkzRfHrz9LIs2dPD3ek5vBg63f1Od9HbOYGhmIChmIChmIChmIChmIChmIChmIChmIChmIChmICh2O52odNd3Ni2ZuPhfLqbPU1bNL+u0fg4HLL5dJV4y8bHFr4g/TzhNdtj3pY/wnfY1T3STmAoJmAoJmAoJmAoJmAoJmAoJmAoJmAoJmAoJmAoJmAotrtd6Hmeo/kpfYNwt/k4H6L59J7kJV1u3rLxdP4Qfv+5KZrewqc/hvdOp7vre+MEhmIChmIChmIChmIChmIChmIChmIChmIChmIChmIChmL1u9BzePHxui7R/DHcrU0vPk7vSZ7Ti5LT3eP0A4Xij59uQ6dvMO/rnueUExiKCRiKCRiKCRiKCRiKCRiKCRiKCRiKCRiKCRiKCRiKPVx79/XatnD+9fn5j2T+ccreIf06T0v2gsOcPT+95zm9Jnlbt+wFofSe7enxKXsDu9DAVxEwFBMwFBMwFBMwFBMwFBMwFBMwFBMwFBMwFBMwFNvdvdCn8zmaf315zXab5+jxYwrvhV6XNZoPV5XjzzMdsvl4mTt8fDg+Rnovd/luc8oJDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMUEDMXiXehlWaL587JEu8qvr6fo+etyjuan4zGafwx3iQ/p7m54r3J6z/O1zem/75aNr+FF1VP2+HpOYCgmYCgmYCgmYCgmYCgmYCgmYCgmYCgmYCj2GQHf1S2B8Jk+6wQWMVzBt9PpNXrBy0s2fzgcLv/4MMb46V7089NT9Pzn53M0H64ej9cle8FTuDudrhKPdY3Gp/ji6SmbD63bGs0v4Q9sjqb7+TswFPvsgP1RGj7QV5zAIoYP8lV/hBYxfICv/DuwiOE3+Y9YUOyrA3YKw2/46oDHEDH8sj0EPIaI4ZfsJeAxRAyxPQU8hogh8nA8HqIXTOGu7Jree/zj3ub33yWdPX6cz+doPl0NfjzM0fxTuAydfv/Xvih53bZoPhwf5ytvNx+Px+jQeLPbvwt7O4EvnMTwDnsNeAwRw0/tOeAxRAz/aO8BjyFi+FsNAY8hYvi/WgIe40fEQoY3mgK+EDH8qTHgMUQMY4zegMcQMVQHPIa/F3Pn2gO+EDG/ov735tvj41P0gi1dZh1LNH0+naL544/d6THeee90uvud7nK/ntfs+eEu9DHenY7GxxYuT2/Z48e6Zc9ftyV7g/f/fn5KvNfenf521ad/vssP5f3/MwT3pv7UfetW/gj9Vzf1Q+LD3Nzvxa2dwG85jbm4uXAvbvUEfutmf3i8y03//G/5BH7LaXx/bjrci3s4gd+6ix8q9/NzvpcT+C2n8e26m3Av7jHgCyHfjrsL9+KeA74Qcq+7DfdCwP8h5B53H+6FgP+XkPdLuH/xbVmW8CVTND3Ph3B+juZPp3M0H+xyP4wxxjzPUchzuKu8vPvj/LCu2Xy6C51vN6dvkD3/z3uw3x3uEn5BU/qFhtJ7s19fvkfzTuCfcyJ/HSfuTwj4/d7+Mon5ekQbEPCvcSp/POH+AgH/Hqfy7xHtbxLwxxHz+4j2Awn4OsT830R7JQK+vr/+8t5D0IL9JAL+fLcYtGC/iIC/3t/98u8xbKHujID362exXCNwgZYRcC+xMf4N+aBNI7Ps+NQAAAAASUVORK5CYII=" xlink:href="data:image/png;base64,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" x="-9.5" y="-20.5" width="19" height="19" />
+          
+              
+          <rect x="-15.60" y="-9.10" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="-15.60" y="-6.50" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="13.00" y="-9.10" width="2.60" height="2.60" fill="#3E6C64"/>
+          <rect x="13.00" y="-6.50" width="2.60" height="2.60" fill="#3E6C64"/>
+            </g>
+          </g>
+        </g>
+        <g transform="translate(155,35)">
+          <g transform="scale(1.9)">
+            <g class="victory-bounce" style="animation-delay:0.3s">
+              <rect x="0.00" y="0.00" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="25.20" y="0.00" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="0.00" y="4.20" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="4.20" y="4.20" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="21.00" y="4.20" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="25.20" y="4.20" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="0.00" y="8.40" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="4.20" y="8.40" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="8.40" y="8.40" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="12.60" y="8.40" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="16.80" y="8.40" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="21.00" y="8.40" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="25.20" y="8.40" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="0.00" y="12.60" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="4.20" y="12.60" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="8.40" y="12.60" width="4.20" height="4.20" fill="#2B2620"/>
+        <rect x="12.60" y="12.60" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="16.80" y="12.60" width="4.20" height="4.20" fill="#2B2620"/>
+        <rect x="21.00" y="12.60" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="25.20" y="12.60" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="0.00" y="16.80" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="4.20" y="16.80" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="8.40" y="16.80" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="12.60" y="16.80" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="16.80" y="16.80" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="21.00" y="16.80" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="25.20" y="16.80" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="4.20" y="21.00" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="8.40" y="21.00" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="12.60" y="21.00" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="16.80" y="21.00" width="4.20" height="4.20" fill="#DD8A3D"/>
+        <rect x="21.00" y="21.00" width="4.20" height="4.20" fill="#DD8A3D"/>
+            </g>
+          </g>
+        </g>
+      </svg>
+    </div>
     <h2>¡Sobrevivieron!</h2>
     <p>Completaste todo el recorrido. Milo, Zoe y vos llegaron enteros hasta acá — misión cumplida.</p>
-    <button class="btn" id="victoryClose">Genial</button>
+    <button class="btn" id="victoryClose">Ver mi camino</button>
   </div>
 </div>
 
@@ -687,12 +837,34 @@ document.getElementById("gallitoClose").addEventListener("click", () => {
   document.getElementById("gallitoOverlay").classList.remove("show");
 });
 
+function spawnConfetti(){
+  const layer = document.getElementById("confettiLayer");
+  layer.innerHTML = "";
+  const colors = ["#3E9C8E","#DD8A3D","#C79A2E","#5E7A3D","#355F58","#F0C09A"];
+  for(let i=0;i<30;i++){
+    const p = document.createElement("div");
+    p.className = "confetti-piece";
+    const size = 4 + Math.random()*4;
+    p.style.left = Math.random()*100 + "%";
+    p.style.width = size + "px";
+    p.style.height = size + "px";
+    p.style.background = colors[Math.floor(Math.random()*colors.length)];
+    p.style.animationDuration = (1.2 + Math.random()*0.9) + "s";
+    p.style.animationDelay = (Math.random()*0.35) + "s";
+    layer.appendChild(p);
+  }
+}
+
 function showVictory(){
   document.getElementById("victoryOverlay").classList.add("show");
+  spawnConfetti();
 }
 document.getElementById("victoryClose").addEventListener("click", () => {
   document.getElementById("victoryOverlay").classList.remove("show");
+  const journeyCard = document.querySelector(".journey-card");
+  if(journeyCard) journeyCard.scrollIntoView({ behavior: "smooth", block: "start" });
 });
+
 
 
 document.querySelectorAll(".day-tab").forEach(tab => {
