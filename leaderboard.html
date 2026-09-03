@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ranking — Michis en Casa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<style>
+  :root{
+    --bg:#F2EEE1; --surface:#FFFFFF; --ink:#2B2620; --ink-soft:#655D4F;
+    --mustard:#C79A2E; --mustard-soft:#F3E6C4; --teal:#355F58; --teal-soft:#DCE7E3;
+    --success:#5E7A3D; --success-soft:#E1E9D3;
+    --aqua:#3E9C8E; --aqua-soft:#DCEFEC; --orange:#DD8A3D; --orange-soft:#FBE7D2;
+    --line:#DED2B4; --shadow:0 2px 0 rgba(43,38,32,0.08);
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Karla',sans-serif;}
+  .wrap{max-width:520px; margin:0 auto; padding:28px 20px 90px; text-align:center;}
+  h1{font-family:'Fraunces',serif; font-size:30px; margin:0 0 4px;}
+  .sub{color:var(--ink-soft); font-size:14.5px; margin:0 0 30px;}
+
+  .podio{display:flex; align-items:flex-end; justify-content:center; gap:10px; margin-bottom:36px;}
+  .podio-spot{display:flex; flex-direction:column; align-items:center; width:100px;}
+  .podio-avatar{width:56px; height:56px; border-radius:50%; background:var(--surface); border:3px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:22px; margin-bottom:8px;}
+  .podio-nombre{font-weight:700; font-size:13.5px; margin-bottom:2px; max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .podio-score{font-size:11.5px; color:var(--ink-soft); margin-bottom:8px;}
+  .podio-bloque{width:100%; border-radius:12px 12px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:6px; font-family:'Fraunces',serif; font-weight:700; font-size:20px; color:#fff;}
+  .p1 .podio-bloque{height:100px; background:var(--mustard);}
+  .p1 .podio-avatar{border-color:var(--mustard); width:68px; height:68px;}
+  .p2 .podio-bloque{height:72px; background:var(--aqua);}
+  .p3 .podio-bloque{height:52px; background:var(--orange);}
+
+  .lista{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:6px 18px; text-align:left;}
+  .fila{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line);}
+  .fila:last-child{border-bottom:none;}
+  .fila .pos{width:22px; font-weight:700; color:var(--ink-soft); font-size:13.5px;}
+  .fila .nombre{flex:1; font-size:14.5px;}
+  .fila .nombre small{display:block; color:var(--ink-soft); font-size:11.5px;}
+  .fila .stat{font-size:13px; color:var(--ink-soft); text-align:right;}
+  .empty{color:var(--ink-soft); font-size:14px; padding:30px 0;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🏆 Ranking de Cuidadores</h1>
+  <p class="sub">Histórico de todos los recorridos — ordenado por días completados y tareas hechas</p>
+
+  <div class="podio" id="podio"></div>
+  <div class="lista" id="lista"><div class="empty">Cargando...</div></div>
+</div>
+
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyAi-tOBkoxFtBuw_Bgk6WCfX8wrQYxbrG4",
+  authDomain: "michis-en-casa.firebaseapp.com",
+  projectId: "michis-en-casa",
+  storageBucket: "michis-en-casa.firebasestorage.app",
+  messagingSenderId: "644207160311",
+  appId: "1:644207160311:web:f63cdcf0a1025170891cf2"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+function diasCompletados(state){
+  const secoKeys = ["milo_seco_1","milo_seco_2","zoe_seco_1","zoe_seco_2"];
+  let dias = 0;
+  Object.keys(state || {}).forEach(d => {
+    const dayState = state[d];
+    if(secoKeys.every(k => dayState[k])) dias++;
+  });
+  return dias;
+}
+function tareasCompletadas(state){
+  let total = 0;
+  Object.keys(state || {}).forEach(d => {
+    Object.keys(state[d]).forEach(k => { if(state[d][k]) total++; });
+  });
+  return total;
+}
+
+async function cargarRanking(){
+  try{
+    const snap = await db.collectionGroup("participantes").get();
+    const personas = [];
+    snap.forEach(doc => {
+      const p = doc.data();
+      const dias = diasCompletados(p.state);
+      const tareas = tareasCompletadas(p.state);
+      personas.push({
+        nombre: p.nombre || "Anónimo",
+        recorrido: p.recorridoNombre || "",
+        dias, tareas,
+        score: dias*1000 + tareas
+      });
+    });
+    personas.sort((a,b) => b.score - a.score);
+    renderPodio(personas.slice(0,3));
+    renderLista(personas);
+  }catch(e){
+    console.error(e);
+    document.getElementById("lista").innerHTML = "<div class='empty'>No se pudo cargar el ranking.</div>";
+  }
+}
+
+function renderPodio(top3){
+  const el = document.getElementById("podio");
+  el.innerHTML = "";
+  const orden = [1,0,2]; // 2do, 1ro, 3ro para el efecto podio
+  const claseByIdx = {0:"p1", 1:"p2", 2:"p3"};
+  const medalla = {0:"🥇", 1:"🥈", 2:"🥉"};
+  orden.forEach(idx => {
+    const p = top3[idx];
+    if(!p) return;
+    const spot = document.createElement("div");
+    spot.className = "podio-spot " + claseByIdx[idx];
+    spot.innerHTML = `
+      <div class="podio-avatar">${p.nombre.charAt(0).toUpperCase()}</div>
+      <div class="podio-nombre">${p.nombre}</div>
+      <div class="podio-score">${p.dias}d · ${p.tareas} tareas</div>
+      <div class="podio-bloque">${medalla[idx]}</div>
+    `;
+    el.appendChild(spot);
+  });
+  if(top3.length === 0) el.innerHTML = "<div class='empty'>Todavía no hay nadie en el ranking.</div>";
+}
+
+function renderLista(personas){
+  const el = document.getElementById("lista");
+  if(personas.length === 0){ el.innerHTML = "<div class='empty'>Todavía no hay nadie en el ranking.</div>"; return; }
+  el.innerHTML = "";
+  personas.forEach((p, i) => {
+    const fila = document.createElement("div");
+    fila.className = "fila";
+    fila.innerHTML = `
+      <div class="pos">#${i+1}</div>
+      <div class="nombre">${p.nombre}<small>${p.recorrido}</small></div>
+      <div class="stat">${p.dias} días<br>${p.tareas} tareas</div>
+    `;
+    el.appendChild(fila);
+  });
+}
+
+cargarRanking();
+</script>
+</body>
+</html>
