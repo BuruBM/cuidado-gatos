@@ -65,7 +65,7 @@
   <div id="gate" class="card">
     <h2>Panel Admin 🔒</h2>
     <label>PIN</label>
-    <input type="text" id="pinInput" placeholder="••••••">
+    <input type="text" id="pinInput" placeholder="••••••" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false">
     <button class="btn" style="width:100%; margin-top:14px;" id="pinBtn">Entrar</button>
     <div id="pinError" style="color:#A65136; font-size:13px; margin-top:8px;"></div>
   </div>
@@ -127,8 +127,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 document.getElementById("pinBtn").addEventListener("click", () => {
-  const val = document.getElementById("pinInput").value;
-  if(val === ADMIN_PIN){
+  const val = document.getElementById("pinInput").value.trim();
+  if(val.toLowerCase() === ADMIN_PIN.toLowerCase()){
     document.getElementById("gate").style.display = "none";
     document.getElementById("panelWrap").style.display = "block";
     document.getElementById("fFecha").value = new Date().toISOString().slice(0,10);
