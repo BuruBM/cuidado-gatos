@@ -75,7 +75,7 @@
     <p class="sub">Michis en Casa — gestión de recorridos</p>
 
     <div class="card">
-      <h2>Crear nuevo recorrido</h2>
+      <h2 id="formTitle">Crear nuevo recorrido</h2>
       <label>Nombre del recorrido</label>
       <input type="text" id="fNombre" placeholder="Ej: Cuidado de Milo y Zoe — Octubre">
       <div class="row">
@@ -99,6 +99,8 @@
       </div>
       <label>Mensaje pop-up de bienvenida (opcional, lo ve cada persona una vez al entrar)</label>
       <textarea id="fPopup" placeholder="Ej: ¡Gracias por bancarnos estos días! Cualquier cosa nos escribís."></textarea>
+      <label>Código de acceso (opcional — si lo ponés, solo entra quien lo tenga)</label>
+      <input type="text" id="fCodigo" placeholder="Ej: gatos2026">
       <button class="btn" style="margin-top:16px;" id="crearBtn">Crear recorrido</button>
       <div id="crearMsg" style="font-size:13.5px; margin-top:10px; color:var(--success);"></div>
     </div>
@@ -150,42 +152,39 @@ function toast(msg){
 
 // ===== Pixelado de foto en el navegador (canvas) =====
 let avatarDataUrl = "";
-document.getElementById("fFoto").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
+function pixelateFileToDataUrl(file, onDone){
   const img = new Image();
   img.onload = () => {
-    const canvas = document.getElementById("canvasWork");
-    const ctx = canvas.getContext("2d");
-    // recorte cuadrado centrado
     const side = Math.min(img.width, img.height);
     const sx = (img.width - side)/2, sy = (img.height - side)/2;
-
-    // paso 1: reducir a una grilla chica (pixelado)
     const small = document.createElement("canvas");
     small.width = 22; small.height = 22;
     const sctx = small.getContext("2d");
     sctx.imageSmoothingEnabled = true;
     sctx.drawImage(img, sx, sy, side, side, 0, 0, 22, 22);
 
-    // paso 2: escalar para arriba sin suavizado -> efecto pixel art
+    const canvas = document.createElement("canvas");
     canvas.width = 240; canvas.height = 240;
+    const ctx = canvas.getContext("2d");
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0,0,240,240);
     ctx.drawImage(small, 0, 0, 22, 22, 0, 0, 240, 240);
-
-    // paso 3: recortar en círculo
     ctx.globalCompositeOperation = "destination-in";
     ctx.beginPath();
     ctx.arc(120,120,120,0,Math.PI*2);
     ctx.fill();
     ctx.globalCompositeOperation = "source-over";
-
-    avatarDataUrl = canvas.toDataURL("image/png");
-    document.getElementById("avatarPreviewImg").src = avatarDataUrl;
-    document.getElementById("avatarPreviewLabel").textContent = "Así se va a ver en el recorrido";
+    onDone(canvas.toDataURL("image/png"));
   };
   img.src = URL.createObjectURL(file);
+}
+document.getElementById("fFoto").addEventListener("change", (e) => {
+  const file = e.target.files[0];
+  if(!file) return;
+  pixelateFileToDataUrl(file, (dataUrl) => {
+    avatarDataUrl = dataUrl;
+    document.getElementById("avatarPreviewImg").src = avatarDataUrl;
+    document.getElementById("avatarPreviewLabel").textContent = "Así se va a ver en el recorrido";
+  });
 });
 
 // ===== Crear recorrido =====
@@ -195,6 +194,7 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
   const fechaInicio = document.getElementById("fFecha").value;
   const heroeNombre = document.getElementById("fHeroe").value.trim();
   const popupGlobal = document.getElementById("fPopup").value.trim();
+  const codigoAcceso = document.getElementById("fCodigo").value.trim();
 
   if(!nombre){ toast("Ponele un nombre al recorrido"); return; }
 
@@ -205,6 +205,7 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
       nombre, dias, fechaInicio, heroeNombre,
       heroeAvatar: avatarDataUrl || "",
       popupGlobal: popupGlobal || "",
+      codigoAcceso: codigoAcceso || "",
       activo: true,
       creado: Date.now()
     });
@@ -213,6 +214,7 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
     document.getElementById("fNombre").value = "";
     document.getElementById("fHeroe").value = "";
     document.getElementById("fPopup").value = "";
+    document.getElementById("fCodigo").value = "";
     avatarDataUrl = "";
     document.getElementById("avatarPreviewImg").src = "";
     document.getElementById("avatarPreviewLabel").textContent = "Sin foto — se usa un avatar genérico";
@@ -244,6 +246,34 @@ async function cargarRecorridos(){
           <input type="text" readonly value="${url}">
           <button class="btn small secondary" onclick="navigator.clipboard.writeText('${url}'); toast('Link copiado')">Copiar</button>
           <button class="btn small secondary" onclick="toggleActivo('${id}', ${!r.activo})">${r.activo ? 'Archivar' : 'Reactivar'}</button>
+          <button class="btn small secondary" onclick="toggleEditar('${id}')">Editar</button>
+        </div>
+        <div id="editBox-${id}" style="display:none; border-top:1px solid var(--line); margin-top:6px; padding-top:12px;">
+          <label>Nombre del recorrido</label>
+          <input type="text" id="e-nombre-${id}" value="${(r.nombre||'').replace(/"/g,'&quot;')}">
+          <div class="row">
+            <div>
+              <label>Cantidad de días</label>
+              <input type="number" id="e-dias-${id}" value="${r.dias||3}" min="1" max="14">
+            </div>
+            <div>
+              <label>Fecha de inicio</label>
+              <input type="date" id="e-fecha-${id}" value="${r.fechaInicio||''}">
+            </div>
+          </div>
+          <label>Nombre del héroe/a</label>
+          <input type="text" id="e-heroe-${id}" value="${(r.heroeNombre||'').replace(/"/g,'&quot;')}">
+          <label>Cambiar foto del avatar (opcional)</label>
+          <input type="file" accept="image/*" id="e-foto-${id}">
+          <div class="avatar-preview">
+            <img id="e-preview-${id}" src="${r.heroeAvatar||''}" alt="" style="${r.heroeAvatar ? '' : 'display:none;'}">
+            <span style="font-size:12px; color:var(--ink-soft);">Si no subís una nueva, se mantiene la actual.</span>
+          </div>
+          <label>Mensaje pop-up de bienvenida</label>
+          <textarea id="e-popup-${id}">${r.popupGlobal||''}</textarea>
+          <label>Código de acceso (opcional)</label>
+          <input type="text" id="e-codigo-${id}" value="${(r.codigoAcceso||'').replace(/"/g,'&quot;')}">
+          <button class="btn small" style="margin-top:10px;" onclick="guardarEdicion('${id}')">Guardar cambios</button>
         </div>
         <div class="participantes-box" id="parts-${id}">Cargando participantes...</div>
         <div class="msg-box">
@@ -299,6 +329,48 @@ async function toggleActivo(id, nuevoValor){
   await db.collection("recorridos").doc(id).set({ activo: nuevoValor }, { merge: true });
   toast(nuevoValor ? "Recorrido reactivado" : "Recorrido archivado");
   cargarRecorridos();
+}
+
+function toggleEditar(id){
+  const box = document.getElementById("editBox-"+id);
+  box.style.display = box.style.display === "none" ? "block" : "none";
+  const fotoInput = document.getElementById("e-foto-"+id);
+  if(fotoInput && !fotoInput.dataset.bound){
+    fotoInput.dataset.bound = "1";
+    fotoInput.addEventListener("change", (e) => {
+      const file = e.target.files[0];
+      if(!file) return;
+      pixelateFileToDataUrl(file, (dataUrl) => {
+        fotoInput.dataset.newAvatar = dataUrl;
+        const prev = document.getElementById("e-preview-"+id);
+        prev.src = dataUrl;
+        prev.style.display = "";
+      });
+    });
+  }
+}
+
+async function guardarEdicion(id){
+  const nombre = document.getElementById("e-nombre-"+id).value.trim();
+  const dias = parseInt(document.getElementById("e-dias-"+id).value) || 3;
+  const fechaInicio = document.getElementById("e-fecha-"+id).value;
+  const heroeNombre = document.getElementById("e-heroe-"+id).value.trim();
+  const popupGlobal = document.getElementById("e-popup-"+id).value.trim();
+  const codigoAcceso = document.getElementById("e-codigo-"+id).value.trim();
+  const fotoInput = document.getElementById("e-foto-"+id);
+  const nuevoAvatar = fotoInput ? fotoInput.dataset.newAvatar : null;
+
+  const update = { nombre, dias, fechaInicio, heroeNombre, popupGlobal, codigoAcceso };
+  if(nuevoAvatar) update.heroeAvatar = nuevoAvatar;
+
+  try{
+    await db.collection("recorridos").doc(id).set(update, { merge: true });
+    toast("Cambios guardados");
+    cargarRecorridos();
+  }catch(e){
+    console.error(e);
+    toast("Error al guardar");
+  }
 }
 
 async function enviarMensaje(recorridoId){
