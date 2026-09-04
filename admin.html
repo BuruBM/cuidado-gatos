@@ -247,6 +247,7 @@ async function cargarRecorridos(){
           <button class="btn small secondary" onclick="navigator.clipboard.writeText('${url}'); toast('Link copiado')">Copiar</button>
           <button class="btn small secondary" onclick="toggleActivo('${id}', ${!r.activo})">${r.activo ? 'Archivar' : 'Reactivar'}</button>
           <button class="btn small secondary" onclick="toggleEditar('${id}')">Editar</button>
+          <button class="btn small secondary" style="color:#A65136; border-color:#A65136;" onclick="eliminarRecorrido('${id}', '${(r.nombre||'').replace(/'/g,"\\'")}')">Eliminar</button>
         </div>
         <div id="editBox-${id}" style="display:none; border-top:1px solid var(--line); margin-top:6px; padding-top:12px;">
           <label>Nombre del recorrido</label>
@@ -329,6 +330,28 @@ async function toggleActivo(id, nuevoValor){
   await db.collection("recorridos").doc(id).set({ activo: nuevoValor }, { merge: true });
   toast(nuevoValor ? "Recorrido reactivado" : "Recorrido archivado");
   cargarRecorridos();
+}
+
+async function eliminarRecorrido(id, nombre){
+  const confirmacion = prompt(`Esto borra "${nombre}" para siempre, junto con el progreso y los comentarios de todos los que entraron. Escribí ELIMINAR para confirmar:`);
+  if(confirmacion !== "ELIMINAR"){
+    if(confirmacion !== null) toast("No coincide, no se borró nada.");
+    return;
+  }
+  try{
+    const partSnap = await db.collection("recorridos").doc(id).collection("participantes").get();
+    const batchDeletes = [];
+    partSnap.forEach(doc => batchDeletes.push(doc.ref.delete()));
+    const comSnap = await db.collection("recorridos").doc(id).collection("comentarios").get();
+    comSnap.forEach(doc => batchDeletes.push(doc.ref.delete()));
+    await Promise.all(batchDeletes);
+    await db.collection("recorridos").doc(id).delete();
+    toast("Recorrido eliminado");
+    cargarRecorridos();
+  }catch(e){
+    console.error(e);
+    toast("Error al eliminar. Revisá la consola.");
+  }
 }
 
 function toggleEditar(id){

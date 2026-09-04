@@ -24,7 +24,10 @@
 
   .podio{display:flex; align-items:flex-end; justify-content:center; gap:10px; margin-bottom:36px;}
   .podio-spot{display:flex; flex-direction:column; align-items:center; width:100px;}
-  .podio-avatar{width:56px; height:56px; border-radius:50%; background:var(--surface); border:3px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:22px; margin-bottom:8px;}
+  .podio-avatar{width:56px; height:56px; border-radius:50%; background:var(--surface); border:3px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:22px; margin-bottom:8px; overflow:hidden;}
+  .podio-avatar img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated;}
+  .btn{font-family:'Karla',sans-serif; font-weight:700; font-size:13.5px; padding:8px 16px; border-radius:100px; border:none; cursor:pointer; background:var(--ink); color:#fff;}
+  .btn.secondary{background:transparent; color:var(--ink); border:1.5px solid var(--ink);}
   .podio-nombre{font-weight:700; font-size:13.5px; margin-bottom:2px; max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .podio-score{font-size:11.5px; color:var(--ink-soft); margin-bottom:8px;}
   .podio-bloque{width:100%; border-radius:12px 12px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:6px; font-family:'Fraunces',serif; font-weight:700; font-size:20px; color:#fff;}
@@ -45,6 +48,7 @@
 </head>
 <body>
 <div class="wrap">
+  <a href="index.html" class="btn secondary" style="display:inline-block; margin-bottom:16px; text-decoration:none;">← Volver al inicio</a>
   <h1>🏆 Ranking de Cuidadores</h1>
   <p class="sub">Histórico de todos los recorridos — ordenado por días completados y tareas hechas</p>
 
@@ -84,18 +88,28 @@ function tareasCompletadas(state){
 async function cargarRanking(){
   try{
     const snap = await db.collectionGroup("participantes").get();
-    const personas = [];
+    const map = {};
     snap.forEach(doc => {
       const p = doc.data();
       const dias = diasCompletados(p.state);
       const tareas = tareasCompletadas(p.state);
-      personas.push({
-        nombre: p.nombre || "Anónimo",
-        recorrido: p.recorridoNombre || "",
-        dias, tareas,
-        score: dias*1000 + tareas
-      });
+      if(dias === 0 && tareas === 0) return;
+      const key = doc.id;
+      if(!map[key]){
+        map[key] = { nombre: p.nombre || "Anónimo", recorridos: new Set(), dias: 0, tareas: 0, heroeAvatar: p.heroeAvatar || "" };
+      }
+      map[key].dias += dias;
+      map[key].tareas += tareas;
+      if(p.recorridoNombre) map[key].recorridos.add(p.recorridoNombre);
+      if(p.heroeAvatar) map[key].heroeAvatar = p.heroeAvatar;
     });
+    const personas = Object.values(map).map(p => ({
+      nombre: p.nombre,
+      recorrido: Array.from(p.recorridos).join(", "),
+      dias: p.dias, tareas: p.tareas,
+      heroeAvatar: p.heroeAvatar,
+      score: p.dias*1000 + p.tareas
+    }));
     personas.sort((a,b) => b.score - a.score);
     renderPodio(personas.slice(0,3));
     renderLista(personas);
@@ -105,10 +119,14 @@ async function cargarRanking(){
   }
 }
 
+function avatarHtml(p){
+  return p.heroeAvatar ? `<img src="${p.heroeAvatar}" alt="${p.nombre}">` : p.nombre.charAt(0).toUpperCase();
+}
+
 function renderPodio(top3){
   const el = document.getElementById("podio");
   el.innerHTML = "";
-  const orden = [1,0,2]; // 2do, 1ro, 3ro para el efecto podio
+  const orden = [1,0,2];
   const claseByIdx = {0:"p1", 1:"p2", 2:"p3"};
   const medalla = {0:"🥇", 1:"🥈", 2:"🥉"};
   orden.forEach(idx => {
@@ -117,19 +135,19 @@ function renderPodio(top3){
     const spot = document.createElement("div");
     spot.className = "podio-spot " + claseByIdx[idx];
     spot.innerHTML = `
-      <div class="podio-avatar">${p.nombre.charAt(0).toUpperCase()}</div>
+      <div class="podio-avatar">${avatarHtml(p)}</div>
       <div class="podio-nombre">${p.nombre}</div>
       <div class="podio-score">${p.dias}d · ${p.tareas} tareas</div>
       <div class="podio-bloque">${medalla[idx]}</div>
     `;
     el.appendChild(spot);
   });
-  if(top3.length === 0) el.innerHTML = "<div class='empty'>Todavía no hay nadie en el ranking.</div>";
+  if(top3.length === 0) el.innerHTML = "<div class='empty'>Todavía nadie completó tareas.</div>";
 }
 
 function renderLista(personas){
   const el = document.getElementById("lista");
-  if(personas.length === 0){ el.innerHTML = "<div class='empty'>Todavía no hay nadie en el ranking.</div>"; return; }
+  if(personas.length === 0){ el.innerHTML = "<div class='empty'>Todavía nadie completó tareas.</div>"; return; }
   el.innerHTML = "";
   personas.forEach((p, i) => {
     const fila = document.createElement("div");
