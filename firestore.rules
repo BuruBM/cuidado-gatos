@@ -41,7 +41,7 @@ service cloud.firestore {
           // Guardar tus propias preferencias (recordatorios, pop-ups vistos)
           || (signedIn()
               && resource.data.get('uid', null) == request.auth.uid
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notif', 'vioPopupGlobal', 'popupPersonal', 'vioCierre', 'actualizado']));
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notif', 'vioPopupGlobal', 'popupPersonal', 'vioCierre', 'cierre', 'actualizado']));
       }
 
       // Checklist compartido: cada tarea de cada día es un documento "dia_key".

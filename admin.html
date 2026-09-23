@@ -44,7 +44,11 @@
   .btn.secondary{background:transparent; color:var(--ink); border:1.5px solid var(--ink);}
   .btn.small{font-size:12.5px; padding:6px 12px;}
   .btn:disabled{opacity:0.4; cursor:default;}
-  .row{display:flex; gap:12px;}
+  .row{display:flex; gap:12px; flex-wrap:wrap;}
+  .row > div{min-width:130px;}
+  .recorrido-item, .card{overflow-wrap:anywhere;}
+  .persona-row{flex-wrap:wrap;}
+  .add-persona input[type=file]{max-width:100%;}
   .row > div{flex:1;}
   .avatar-preview{display:flex; align-items:center; gap:14px; margin-top:10px;}
   .avatar-preview img{width:64px; height:64px; border-radius:50%; background:var(--bg); border:2px solid var(--line); image-rendering:pixelated;}
@@ -52,7 +56,8 @@
   .recorrido-item{border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:12px; background:#FBF9F3;}
   .recorrido-item h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:17px;}
   .recorrido-item .meta{font-size:12.5px; color:var(--ink-soft); margin-bottom:8px;}
-  .recorrido-item .link-box{display:flex; gap:8px; align-items:center; margin-bottom:10px;}
+  .recorrido-item .link-box{display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px;}
+  .recorrido-item .link-box input{flex:1 1 100%; min-width:0;}
   .recorrido-item .link-box input{font-size:12px; padding:6px 8px;}
   .tag-activo{display:inline-block; background:var(--success-soft); color:#3E5324; font-size:11px; font-weight:700; padding:2px 8px; border-radius:100px;}
   .tag-archivado{display:inline-block; background:var(--line); color:var(--ink-soft); font-size:11px; font-weight:700; padding:2px 8px; border-radius:100px;}
@@ -270,6 +275,12 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
   btn.disabled = false; btn.textContent = "Crear recorrido";
 });
 
+function etiquetaEstado(r){
+  if(!r.activo) return '<span class="tag-archivado">archivado</span>';
+  if(r.fechaInicio && diaDelRecorrido(r) > (r.dias || 3)) return '<span class="tag-archivado">terminado</span>';
+  return '<span class="tag-activo">activo</span>';
+}
+
 function linkDe(id){
   return `${location.origin}${location.pathname.replace("admin.html","index.html")}?r=${id}`;
 }
@@ -290,7 +301,7 @@ async function cargarRecorridos(){
       const item = document.createElement("div");
       item.className = "recorrido-item";
       item.innerHTML = `
-        <h3>${escapeHtml(r.nombre || "(sin nombre)")} <span class="${r.activo ? 'tag-activo' : 'tag-archivado'}">${r.activo ? 'activo' : 'archivado'}</span></h3>
+        <h3>${escapeHtml(r.nombre || "(sin nombre)")} ${etiquetaEstado(r)}</h3>
         <div class="meta">${r.dias} días · desde ${escapeHtml(r.fechaInicio || "?")}</div>
         <div class="link-box">
           <input type="text" readonly value="${url}">
@@ -420,16 +431,16 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
   box.innerHTML = "";
   pids.forEach(pid => {
     const p = participantes[pid];
-    const puntos = Object.values(tareas).filter(t => t.pid === pid).length;
+    const puntos = Object.values(tareas).filter(t => t.pid === pid).reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
     const dias = new Set(Object.values(tareas).filter(t => t.pid === pid).map(t => t.dia)).size;
-    const victoria = calcularVictoria(tareas, pid, r);
+    const victoria = (p.cierre && p.cierre.pct !== undefined) ? p.cierre.pct : calcularVictoria(tareas, pid, r);
     const av = avatarDe(p);
     const row = document.createElement("div");
     row.className = "persona-row";
     row.innerHTML = `
       ${av ? `<img src="${av}" alt="">` : `<div class="sin-foto">${escapeHtml((p.nombre||"?").charAt(0).toUpperCase())}</div>`}
       <div class="info">${escapeHtml(p.nombre)}
-        <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}${victoria === null ? "" : ` · ${victoria}% de sus días`}</small>
+        <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}${victoria === null ? "" : ` · ${p.cierre ? "🏁 " : ""}${victoria}% de sus días`}</small>
       </div>
       <div class="acciones">
         <label class="btn small secondary" style="margin:0; font-size:12.5px; color:var(--ink);">Foto<input type="file" accept="image/*" style="display:none;"></label>

@@ -327,6 +327,8 @@
   .recorrido-btn span{font-size:12.5px; color:var(--ink-soft);}
   .recorrido-btn::after{content:"→"; flex:none; width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; margin-left:10px;}
   .recorrido-btn:hover{border-color:var(--teal);}
+  .recorrido-btn.pasado{box-shadow:none; background:rgba(255,255,255,0.55);}
+  .recorrido-btn.pasado::after{background:#A8A08F;}
 
   .landing-footer{text-align:center; margin-top:40px; font-size:12px; color:var(--ink-soft);}
   .landing-footer a{color:var(--ink-soft);}
@@ -481,6 +483,11 @@
 
   <h2 class="landing-section-title" style="--sec:var(--teal)">Recorridos activos</h2>
   <div class="recorridos-grid" id="recorridosActivos">Cargando...</div>
+
+  <div id="pasadosWrap" style="display:none;">
+    <h2 class="landing-section-title" style="--sec:#A8A08F">Recorridos pasados</h2>
+    <div class="recorridos-grid" id="recorridosPasados"></div>
+  </div>
 
   <h2 class="landing-section-title" style="--sec:var(--orange)">Muro de los cuidadores</h2>
   <div id="comentariosLandingWrap">
@@ -703,6 +710,12 @@
 
   <div class="day-tabs" id="dayTabs"></div>
   <div id="dayPanels"></div>
+
+  <div class="card terminar-card" id="terminarCard" style="display:none;">
+    <h3 class="section-title">🏁 ¿Terminaste tus días?</h3>
+    <p class="section-note">Si hoy fue tu última visita, cerrá tu recorrido y mirá cómo te fue. Tu resultado queda guardado así. Si después volvés y tildás algo, se reabre solo.</p>
+    <button class="btn" id="terminarBtn">Terminé mis días</button>
+  </div>
 
   <div class="card comentarios-card">
     <h3 class="section-title">💬 Dejá tu marca</h3>
@@ -949,7 +962,7 @@ function recorridoTerminado(){ return !!recorrido.fechaInicio && diaDeHoy() > TO
 // ===== Puntos y % de victoria =====
 function puntosDe(pid){
   let n = 0;
-  for(const id in tareas) if(tareas[id].pid === pid) n++;
+  for(const id in tareas) if(tareas[id].pid === pid) n += puntosDeTarea(tareas[id].key);
   return n;
 }
 // Los días "de" una persona son los días en que tildó al menos una tarea
@@ -958,8 +971,14 @@ function diasDe(pid){
   for(const id in tareas) if(tareas[id].pid === pid) dias.add(Number(tareas[id].dia));
   return dias;
 }
-function victoriaDe(pid){ return calcularVictoria(tareas, pid, recorrido); }
-function totalPuntosPosibles(){ return TOTAL_DIAS * tareasDelDia().length; }
+// Si la persona tocó "Terminé mis días", su % queda congelado en ese momento
+function victoriaDe(pid){
+  const cierre = (participantes[pid] || {}).cierre;
+  if(cierre && cierre.pct !== undefined) return cierre.pct;
+  return calcularVictoria(tareas, pid, recorrido);
+}
+function yaCerro(pid){ return !!((participantes[pid] || {}).cierre); }
+function totalPuntosPosibles(){ return TOTAL_DIAS * puntosPosiblesPorDia(); }
 function ranking(){
   return Object.keys(participantes)
     .map(pid => ({ pid, nombre: nombreDe(pid), puntos: puntosDe(pid), victoria: victoriaDe(pid) }))
@@ -1104,6 +1123,7 @@ function startApp(){
   initNotif();
   initComentarios();
   document.getElementById("cierreVerBtn").addEventListener("click", () => showVictory(mensajeCierre(victoriaDe(participanteId))));
+  document.getElementById("terminarBtn").addEventListener("click", terminarMisDias);
 
   // Todo en tiempo real: se ve el avance de los demás sin recargar
   let primeraCarga = true;
@@ -1265,6 +1285,10 @@ function attachTaskHandlers(){
           await ref.delete();
         } else {
           await ref.set({ dia, key, pid: participanteId, nombre: participanteNombre, uid: usuario.uid, creado: Date.now() });
+          if(yaCerro(participanteId) && !recorridoTerminado()){
+            participanteRef().update({ cierre: null }).catch(err => console.error(err));
+            toast("¡Volviste! Tu cierre se reabrió.");
+          }
           if(esObligatoria && obligatoriasAntes + 1 === TAREAS_OBLIGATORIAS.length) showCelebration();
           else if(esObligatoria && obligatoriasAntes === 0) showGallitoReminder();
         }
@@ -1327,7 +1351,7 @@ function renderStandings(){
   el.innerHTML = lista.map((p, i) => {
     const av = avatarDe(participantes[p.pid]);
     const dot = av ? `<img src="${av}" alt="">` : escapeHtml(p.nombre.trim().charAt(0).toUpperCase());
-    const vic = p.victoria === null ? "sin días aún" : `${p.victoria}% de sus días`;
+    const vic = p.victoria === null ? "sin días aún" : `${yaCerro(p.pid) ? "🏁 " : ""}${p.victoria}% de sus días`;
     return `<div class="standing-row${p.pid === participanteId ? " me" : ""}" title="${terminado ? "" : "El % es parcial: el día de hoy todavía no cuenta"}">
       <span class="pos">${i+1}</span>
       <span class="dot-color" style="background:${colorDe(p.pid)}">${dot}</span>
@@ -1349,7 +1373,10 @@ function mensajeCierre(pct){
 
 function renderCierre(){
   const card = document.getElementById("cierreCard");
-  if(!recorridoTerminado()){ card.style.display = "none"; return; }
+  const terminado = recorridoTerminado();
+  document.getElementById("terminarCard").style.display =
+    (!terminado && !yaCerro(participanteId) && puntosDe(participanteId) > 0) ? "block" : "none";
+  if(!terminado && !yaCerro(participanteId)){ card.style.display = "none"; return; }
   card.style.display = "block";
   const pct = victoriaDe(participanteId);
   const m = mensajeCierre(pct);
@@ -1362,8 +1389,22 @@ function renderCierre(){
   const medallas = ["🥇","🥈","🥉"];
   const podio = ranking().filter(p => p.puntos > 0).slice(0,3).map((p,i) => `${medallas[i]} ${escapeHtml(p.nombre)} (${p.puntos})`).join(" · ");
   document.getElementById("cierreGrupo").innerHTML =
-    `Entre todos: todas las tomas completas en <b>${diasCompletos} de ${TOTAL_DIAS}</b> días · ${Object.keys(tareas).length} tareas hechas` +
+    (terminado ? "" : `Cerraste tus días · el recorrido sigue hasta el día ${TOTAL_DIAS}<br>`) +
+    `${terminado ? "Entre todos" : "Hasta ahora, entre todos"}: todas las tomas completas en <b>${diasCompletos} de ${TOTAL_DIAS}</b> días · ${Object.keys(tareas).length} tareas hechas` +
     (podio ? `<br>Podio del recorrido: ${podio}` : "");
+}
+
+async function terminarMisDias(){
+  if(!confirm("¿Terminaste tus días? Vas a ver tu cierre y tu resultado queda guardado. Si volvés y tildás algo, se reabre.")) return;
+  const hoy = diaDeHoy();
+  const pct = calcularVictoria(tareas, participanteId, recorrido, hoy >= 1 ? hoy : TOTAL_DIAS);
+  try{
+    await participanteRef().update({ cierre: { pct, dia: hoy, fecha: Date.now() }, vioCierre: true });
+    showVictory(mensajeCierre(pct));
+  }catch(e){
+    console.error(e);
+    toast("No se pudo guardar tu cierre. Probá de nuevo.");
+  }
 }
 
 // ===== Modales =====
@@ -1720,27 +1761,39 @@ async function loadPodioMini(){
   }
 }
 
+// Activos: en fecha y sin archivar. Pasados: terminados o archivados (se puede entrar a ver el cierre).
 async function loadRecorridosActivos(){
   const el = document.getElementById("recorridosActivos");
   try{
-    const snap = await db.collection("recorridos").where("activo","==",true).get();
-    const docs = [];
-    snap.forEach(doc => docs.push(doc));
-    docs.sort((a,b) => (b.data().creado||0) - (a.data().creado||0));
-    if(docs.length === 0){ el.innerHTML = "<p style='color:var(--ink-soft); font-size:14px;'>No hay recorridos activos ahora mismo.</p>"; return; }
-    el.innerHTML = "";
-    docs.forEach(doc => {
+    const snap = await db.collection("recorridos").get();
+    const activos = [], pasados = [];
+    snap.forEach(doc => {
       const r = doc.data();
-      const btn = document.createElement("button");
-      btn.className = "recorrido-btn";
-      btn.innerHTML = `<div><b>${escapeHtml(r.nombre || "(sin nombre)")}</b><span>${r.dias} días${r.fechaInicio ? " · desde " + fechaParaDia(r.fechaInicio, 0) : ""}</span></div>`;
-      btn.addEventListener("click", () => { window.location.href = `index.html?r=${doc.id}`; });
-      el.appendChild(btn);
+      const terminado = !!r.fechaInicio && diaDelRecorrido(r) > (r.dias || 3);
+      (r.activo && !terminado ? activos : pasados).push(doc);
     });
+    const porFecha = (a,b) => (b.data().fechaInicio || "").localeCompare(a.data().fechaInicio || "") || (b.data().creado||0) - (a.data().creado||0);
+    activos.sort(porFecha); pasados.sort(porFecha);
+    el.innerHTML = activos.length ? "" : "<p style='color:var(--ink-soft); font-size:14px; margin:0;'>No hay recorridos activos ahora mismo.</p>";
+    activos.forEach(doc => el.appendChild(botonRecorrido(doc, false)));
+    const pasadosEl = document.getElementById("recorridosPasados");
+    pasadosEl.innerHTML = "";
+    pasados.forEach(doc => pasadosEl.appendChild(botonRecorrido(doc, true)));
+    document.getElementById("pasadosWrap").style.display = pasados.length ? "block" : "none";
   }catch(e){
     console.error(e);
     el.innerHTML = "<p style='color:#A65136; font-size:14px;'>Error cargando recorridos.</p>";
   }
+}
+
+function botonRecorrido(doc, pasado){
+  const r = doc.data();
+  const btn = document.createElement("button");
+  btn.className = "recorrido-btn" + (pasado ? " pasado" : "");
+  const desde = r.fechaInicio ? " · desde " + fechaParaDia(r.fechaInicio, 0) : "";
+  btn.innerHTML = `<div><b>${escapeHtml(r.nombre || "(sin nombre)")}</b><span>${r.dias} días${desde}</span></div>`;
+  btn.addEventListener("click", () => { window.location.href = `index.html?r=${doc.id}`; });
+  return btn;
 }
 
 initGate();
