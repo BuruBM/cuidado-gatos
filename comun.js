@@ -32,9 +32,21 @@ async function loginGoogle(){
       await auth.signInWithRedirect(provider);
     } else if(e.code !== "auth/popup-closed-by-user" && e.code !== "auth/cancelled-popup-request"){
       console.error(e);
-      alert("No se pudo entrar con Google. Probá de nuevo.");
+      alert(mensajeErrorLogin(e));
     }
   }
+}
+
+// Los errores de configuración de Firebase dicen exactamente qué falta activar
+function mensajeErrorLogin(e){
+  const dominio = location.hostname;
+  if(e.code === "auth/unauthorized-domain")
+    return `Falta autorizar este sitio en Firebase: Authentication → Settings → Authorized domains → agregar "${dominio}".`;
+  if(e.code === "auth/operation-not-allowed" || e.code === "auth/configuration-not-found")
+    return "El acceso con Google no está activado en Firebase: Authentication → Sign-in method → Google → Habilitar (elegí el correo de asistencia y Guardar).";
+  if(e.code === "auth/network-request-failed")
+    return "No hay conexión. Probá de nuevo en un rato.";
+  return `No se pudo entrar con Google (${e.code || e.message}). Probá de nuevo.`;
 }
 
 function escapeHtml(str){
@@ -77,6 +89,17 @@ function tareasDelDia(){
   ];
 }
 
+// Puntos por tarea: las que más cuestan valen más
+const PUNTOS = { seco:10, humedo:15, piedras:20 };
+function puntosDeTarea(key){
+  if(key === "piedras") return PUNTOS.piedras;
+  if(String(key).includes("humedo")) return PUNTOS.humedo;
+  return PUNTOS.seco;
+}
+function puntosPosiblesPorDia(){
+  return tareasDelDia().reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
+}
+
 // Día de hoy dentro del recorrido (1 = primer día). Sin fecha de inicio, 0 (nunca termina).
 function diaDelRecorrido(recorrido){
   if(!recorrido.fechaInicio) return 0;
@@ -92,12 +115,13 @@ function diaDelRecorrido(recorrido){
 // - Pendientes: tomas de seco que nadie hizo en sus días, y piedras si nadie las limpió
 //   ni ese día ni el anterior (mínimo día por medio)
 // Lo que hizo otra persona no le resta. Los suplementos no hechos no restan.
-// El día en curso todavía no cuenta como pendiente.
-function calcularVictoria(tareas, pid, recorrido){
+// El día en curso todavía no cuenta como pendiente, salvo que la persona haya tocado
+// "Terminé mis días" (hastaDia = hoy): ahí su % se calcula hasta hoy y queda congelado.
+function calcularVictoria(tareas, pid, recorrido, hastaDia){
   const totalDias = recorrido.dias || 3;
   const hoy = diaDelRecorrido(recorrido);
   const terminado = !!recorrido.fechaInicio && hoy > totalDias;
-  const hasta = terminado ? totalDias : hoy - 1;
+  const hasta = hastaDia !== undefined ? Math.min(hastaDia, totalDias) : (terminado ? totalDias : hoy - 1);
   const dias = new Set();
   const diasConAlgo = new Set();
   let hechas = 0;
@@ -124,7 +148,7 @@ function tareasLegacy(p){
   if(p.migrado || !p.state) return 0;
   let total = 0;
   Object.keys(p.state).forEach(d => {
-    Object.keys(p.state[d] || {}).forEach(k => { if(p.state[d][k]) total++; });
+    Object.keys(p.state[d] || {}).forEach(k => { if(p.state[d][k]) total += puntosDeTarea(k); });
   });
   return total;
 }
@@ -136,7 +160,7 @@ function avatarDe(p){
   return "";
 }
 
-// ===== Ranking global: 1 punto por tarea tildada, sumando todos los recorridos =====
+// ===== Ranking global: puntos por tarea tildada, sumando todos los recorridos =====
 async function calcularRanking(){
   const [partsSnap, tareasSnap] = await Promise.all([
     db.collectionGroup("participantes").get(),
@@ -147,7 +171,7 @@ async function calcularRanking(){
     const t = doc.data();
     const rid = doc.ref.parent.parent.id;
     const k = rid + "/" + t.pid;
-    puntosPorSlot[k] = (puntosPorSlot[k] || 0) + 1;
+    puntosPorSlot[k] = (puntosPorSlot[k] || 0) + puntosDeTarea(t.key);
   });
   const map = {};
   partsSnap.forEach(doc => {
