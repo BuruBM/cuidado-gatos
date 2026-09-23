@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="comun.js"></script>
 <style>
   :root{
     --bg:#F2EEE1; --surface:#FFFFFF; --ink:#2B2620; --ink-soft:#655D4F;
@@ -17,26 +19,26 @@
     --line:#DED2B4; --shadow:0 2px 0 rgba(43,38,32,0.08);
   }
   *{box-sizing:border-box;}
-  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Karla',sans-serif;}
+  body{margin:0; background:#F7F5F0; color:var(--ink); font-family:'Karla',sans-serif;}
   .wrap{max-width:520px; margin:0 auto; padding:28px 20px 90px; text-align:center;}
   h1{font-family:'Fraunces',serif; font-size:30px; margin:0 0 4px;}
   .sub{color:var(--ink-soft); font-size:14.5px; margin:0 0 30px;}
 
   .podio{display:flex; align-items:flex-end; justify-content:center; gap:10px; margin-bottom:36px;}
   .podio-spot{display:flex; flex-direction:column; align-items:center; width:100px;}
-  .podio-avatar{width:56px; height:56px; border-radius:50%; background:var(--surface); border:3px solid var(--line); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:22px; margin-bottom:8px; overflow:hidden;}
+  .podio-avatar{width:56px; height:56px; border-radius:50%; background:var(--surface); border:1px solid #D9D3C4; display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:22px; margin-bottom:8px; overflow:hidden;}
   .podio-avatar img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated;}
   .btn{font-family:'Karla',sans-serif; font-weight:700; font-size:13.5px; padding:8px 16px; border-radius:100px; border:none; cursor:pointer; background:var(--ink); color:#fff;}
   .btn.secondary{background:transparent; color:var(--ink); border:1.5px solid var(--ink);}
   .podio-nombre{font-weight:700; font-size:13.5px; margin-bottom:2px; max-width:95px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .podio-score{font-size:11.5px; color:var(--ink-soft); margin-bottom:8px;}
-  .podio-bloque{width:100%; border-radius:12px 12px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:6px; font-family:'Fraunces',serif; font-weight:700; font-size:20px; color:#fff;}
-  .p1 .podio-bloque{height:100px; background:var(--mustard);}
-  .p1 .podio-avatar{border-color:var(--mustard); width:68px; height:68px;}
-  .p2 .podio-bloque{height:72px; background:var(--aqua);}
-  .p3 .podio-bloque{height:52px; background:var(--orange);}
+  .podio-bloque{width:100%; border-radius:4px 4px 0 0; display:flex; align-items:flex-start; justify-content:center; padding-top:6px; font-family:'Fraunces',serif; font-weight:600; font-size:18px; color:#fff;}
+  .p1 .podio-bloque{height:100px; background:var(--ink);}
+  .p1 .podio-avatar{border:2px solid var(--mustard); width:68px; height:68px;}
+  .p2 .podio-bloque{height:72px; background:#6F675A;}
+  .p3 .podio-bloque{height:52px; background:#A8A08F;}
 
-  .lista{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:6px 18px; text-align:left;}
+  .lista{background:var(--surface); border:1px solid #E4DFD3; border-radius:8px; padding:6px 18px; text-align:left;}
   .fila{display:flex; align-items:center; gap:12px; padding:11px 0; border-bottom:1px solid var(--line);}
   .fila:last-child{border-bottom:none;}
   .fila .pos{width:22px; font-weight:700; color:var(--ink-soft); font-size:13.5px;}
@@ -49,68 +51,17 @@
 <body>
 <div class="wrap">
   <a href="index.html" class="btn secondary" style="display:inline-block; margin-bottom:16px; text-decoration:none;">← Volver al inicio</a>
-  <h1>🏆 Ranking de Cuidadores</h1>
-  <p class="sub">Histórico de todos los recorridos — ordenado por días completados y tareas hechas</p>
+  <h1>Ranking de cuidadores</h1>
+  <p class="sub">Histórico de todos los recorridos — 1 punto por cada tarea hecha</p>
 
   <div class="podio" id="podio"></div>
   <div class="lista" id="lista"><div class="empty">Cargando...</div></div>
 </div>
 
 <script>
-const firebaseConfig = {
-  apiKey: "AIzaSyAi-tOBkoxFtBuw_Bgk6WCfX8wrQYxbrG4",
-  authDomain: "michis-en-casa.firebaseapp.com",
-  projectId: "michis-en-casa",
-  storageBucket: "michis-en-casa.firebasestorage.app",
-  messagingSenderId: "644207160311",
-  appId: "1:644207160311:web:f63cdcf0a1025170891cf2"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-function diasCompletados(state){
-  const secoKeys = ["milo_seco_1","milo_seco_2","zoe_seco_1","zoe_seco_2"];
-  let dias = 0;
-  Object.keys(state || {}).forEach(d => {
-    const dayState = state[d];
-    if(secoKeys.every(k => dayState[k])) dias++;
-  });
-  return dias;
-}
-function tareasCompletadas(state){
-  let total = 0;
-  Object.keys(state || {}).forEach(d => {
-    Object.keys(state[d]).forEach(k => { if(state[d][k]) total++; });
-  });
-  return total;
-}
-
 async function cargarRanking(){
   try{
-    const snap = await db.collectionGroup("participantes").get();
-    const map = {};
-    snap.forEach(doc => {
-      const p = doc.data();
-      const dias = diasCompletados(p.state);
-      const tareas = tareasCompletadas(p.state);
-      if(dias === 0 && tareas === 0) return;
-      const key = doc.id;
-      if(!map[key]){
-        map[key] = { nombre: p.nombre || "Anónimo", recorridos: new Set(), dias: 0, tareas: 0, heroeAvatar: p.heroeAvatar || "" };
-      }
-      map[key].dias += dias;
-      map[key].tareas += tareas;
-      if(p.recorridoNombre) map[key].recorridos.add(p.recorridoNombre);
-      if(p.heroeAvatar) map[key].heroeAvatar = p.heroeAvatar;
-    });
-    const personas = Object.values(map).map(p => ({
-      nombre: p.nombre,
-      recorrido: Array.from(p.recorridos).join(", "),
-      dias: p.dias, tareas: p.tareas,
-      heroeAvatar: p.heroeAvatar,
-      score: p.dias*1000 + p.tareas
-    }));
-    personas.sort((a,b) => b.score - a.score);
+    const personas = await calcularRanking();
     renderPodio(personas.slice(0,3));
     renderLista(personas);
   }catch(e){
@@ -120,25 +71,23 @@ async function cargarRanking(){
 }
 
 function avatarHtml(p){
-  return p.heroeAvatar ? `<img src="${p.heroeAvatar}" alt="${p.nombre}">` : p.nombre.charAt(0).toUpperCase();
+  return p.avatar ? `<img src="${p.avatar}" alt="${escapeHtml(p.nombre)}">` : escapeHtml(p.nombre.charAt(0).toUpperCase());
 }
 
 function renderPodio(top3){
   const el = document.getElementById("podio");
   el.innerHTML = "";
-  const orden = [1,0,2];
   const claseByIdx = {0:"p1", 1:"p2", 2:"p3"};
-  const medalla = {0:"🥇", 1:"🥈", 2:"🥉"};
-  orden.forEach(idx => {
+  [1,0,2].forEach(idx => {
     const p = top3[idx];
     if(!p) return;
     const spot = document.createElement("div");
     spot.className = "podio-spot " + claseByIdx[idx];
     spot.innerHTML = `
       <div class="podio-avatar">${avatarHtml(p)}</div>
-      <div class="podio-nombre">${p.nombre}</div>
-      <div class="podio-score">${p.dias}d · ${p.tareas} tareas</div>
-      <div class="podio-bloque">${medalla[idx]}</div>
+      <div class="podio-nombre">${escapeHtml(p.nombre)}</div>
+      <div class="podio-score">${p.puntos} pts</div>
+      <div class="podio-bloque">${idx+1}</div>
     `;
     el.appendChild(spot);
   });
@@ -154,8 +103,8 @@ function renderLista(personas){
     fila.className = "fila";
     fila.innerHTML = `
       <div class="pos">#${i+1}</div>
-      <div class="nombre">${p.nombre}<small>${p.recorrido}</small></div>
-      <div class="stat">${p.dias} días<br>${p.tareas} tareas</div>
+      <div class="nombre">${escapeHtml(p.nombre)}<small>${escapeHtml(p.recorridos.join(", "))}</small></div>
+      <div class="stat">${p.puntos} pts</div>
     `;
     el.appendChild(fila);
   });

@@ -8,6 +8,8 @@
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="comun.js"></script>
 <style>
   :root{
     --bg:#F2EEE1; --surface:#FFFFFF; --ink:#2B2620; --ink-soft:#655D4F;
@@ -52,9 +54,25 @@
   .participante-row .bar-fill{background:var(--success); height:100%;}
   .msg-box{display:flex; gap:8px; margin-top:8px;}
   .msg-box select, .msg-box input{flex:1;}
-  #gate{max-width:340px; margin:80px auto;}
-  #gate input{text-align:center; letter-spacing:0.1em;}
+  .persona-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
+  .persona-row:last-child{border-bottom:none;}
+  .persona-row img, .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
+  .persona-row .sin-foto{display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--ink-soft);}
+  .persona-row .info{flex:1; min-width:0;}
+  .persona-row .info small{display:block; color:var(--ink-soft); font-size:12px;}
+  .persona-row .acciones{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  .personas-box{margin-top:12px; border-top:1px solid var(--line); padding-top:10px;}
+  .personas-box h4{margin:0 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);}
+  .add-persona{display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;}
+  .add-persona input[type=text]{flex:1; min-width:140px;}
+  .add-persona input[type=file]{font-size:12px; max-width:200px;}
+  .vinculado{color:var(--success); font-weight:700;}
+  #gate{max-width:360px; margin:80px auto; text-align:center;}
   #panelWrap{display:none;}
+  .btn-google{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:#fff; color:var(--ink); border:1.5px solid var(--line); margin-top:10px;}
+  .btn-google svg{width:18px; height:18px;}
+  .session{font-size:12.5px; color:var(--ink-soft); margin-bottom:18px;}
+  .session button{background:none; border:none; padding:0; font:inherit; color:var(--ink-soft); text-decoration:underline; cursor:pointer;}
   .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:100px; font-size:13.5px; opacity:0; transition:opacity .3s ease; pointer-events:none;}
   .toast.show{opacity:1;}
 </style>
@@ -64,18 +82,18 @@
 <div class="wrap">
   <div id="gate" class="card">
     <h2>Panel Admin 🔒</h2>
-    <label>PIN</label>
-    <input type="text" id="pinInput" placeholder="••••••" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false">
-    <button class="btn" style="width:100%; margin-top:14px;" id="pinBtn">Entrar</button>
-    <div id="pinError" style="color:#A65136; font-size:13px; margin-top:8px;"></div>
+    <p style="font-size:14px; color:var(--ink-soft); margin:0;" id="gateMsg">Entrá con tu cuenta de Google de admin.</p>
+    <button class="btn btn-google" id="loginBtn"><svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar con Google</button>
+    <a href="index.html" style="display:inline-block; margin-top:16px; font-size:13px; color:var(--ink-soft);">← Volver al inicio</a>
   </div>
 
   <div id="panelWrap">
     <h1>Panel Admin</h1>
     <p class="sub">Michis en Casa — gestión de recorridos</p>
+    <div class="session" id="session"></div>
 
     <div class="card">
-      <h2 id="formTitle">Crear nuevo recorrido</h2>
+      <h2>Crear nuevo recorrido</h2>
       <label>Nombre del recorrido</label>
       <input type="text" id="fNombre" placeholder="Ej: Cuidado de Milo y Zoe — Octubre">
       <div class="row">
@@ -88,21 +106,13 @@
           <input type="date" id="fFecha">
         </div>
       </div>
-      <label>Nombre del héroe/a</label>
-      <input type="text" id="fHeroe" placeholder="Ej: Juan">
-      <label>Foto para el avatar (se pixela sola)</label>
-      <input type="file" accept="image/*" id="fFoto">
-      <canvas id="canvasWork" width="240" height="240"></canvas>
-      <div class="avatar-preview">
-        <img id="avatarPreviewImg" src="" alt="preview">
-        <span style="font-size:12.5px; color:var(--ink-soft);" id="avatarPreviewLabel">Sin foto — se usa un avatar genérico</span>
-      </div>
+      <label>Personas que cuidan (el nombre acepta apodos: "pam" sirve para Pame y Pamela)</label>
+      <div id="fPersonas"></div>
+      <button class="btn small secondary" id="fAgregarPersona" style="margin-top:8px;">+ Agregar persona</button>
       <label>Mensaje pop-up de bienvenida (opcional, lo ve cada persona una vez al entrar)</label>
       <textarea id="fPopup" placeholder="Ej: ¡Gracias por bancarnos estos días! Cualquier cosa nos escribís."></textarea>
-      <label>Código de acceso (opcional — si lo ponés, solo entra quien lo tenga)</label>
-      <input type="text" id="fCodigo" placeholder="Ej: gatos2026">
       <button class="btn" style="margin-top:16px;" id="crearBtn">Crear recorrido</button>
-      <div id="crearMsg" style="font-size:13.5px; margin-top:10px; color:var(--success);"></div>
+      <div id="crearMsg" style="font-size:13.5px; margin-top:10px; color:var(--success); word-break:break-all;"></div>
     </div>
 
     <div class="card">
@@ -115,32 +125,35 @@
 <div class="toast" id="toast"></div>
 
 <script>
-const ADMIN_PIN = "M1Zo3";
+let usuario = null;
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAi-tOBkoxFtBuw_Bgk6WCfX8wrQYxbrG4",
-  authDomain: "michis-en-casa.firebaseapp.com",
-  projectId: "michis-en-casa",
-  storageBucket: "michis-en-casa.firebasestorage.app",
-  messagingSenderId: "644207160311",
-  appId: "1:644207160311:web:f63cdcf0a1025170891cf2"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+auth.getRedirectResult().catch(e => console.error(e));
+document.getElementById("loginBtn").addEventListener("click", loginGoogle);
 
-document.getElementById("pinBtn").addEventListener("click", () => {
-  const val = document.getElementById("pinInput").value.trim();
-  if(val.toLowerCase() === ADMIN_PIN.toLowerCase()){
-    document.getElementById("gate").style.display = "none";
-    document.getElementById("panelWrap").style.display = "block";
-    document.getElementById("fFecha").value = new Date().toISOString().slice(0,10);
-    cargarRecorridos();
-  } else {
-    document.getElementById("pinError").textContent = "PIN incorrecto.";
+auth.onAuthStateChanged(user => {
+  usuario = user;
+  const gateMsg = document.getElementById("gateMsg");
+  if(!user){
+    document.getElementById("gate").style.display = "block";
+    document.getElementById("panelWrap").style.display = "none";
+    gateMsg.textContent = "Entrá con tu cuenta de Google de admin.";
+    return;
   }
-});
-document.getElementById("pinInput").addEventListener("keydown", (e) => {
-  if(e.key === "Enter") document.getElementById("pinBtn").click();
+  if(!esAdmin(user)){
+    document.getElementById("gate").style.display = "block";
+    document.getElementById("panelWrap").style.display = "none";
+    gateMsg.innerHTML = `La cuenta ${escapeHtml(user.email)} no es admin. <button class="btn small secondary" id="otraCuenta" style="margin-top:8px;">Usar otra cuenta</button>`;
+    document.getElementById("otraCuenta").addEventListener("click", () => auth.signOut());
+    document.getElementById("loginBtn").style.display = "none";
+    return;
+  }
+  document.getElementById("gate").style.display = "none";
+  document.getElementById("panelWrap").style.display = "block";
+  document.getElementById("session").innerHTML = `Conectada como ${escapeHtml(user.email)} · <button id="logoutBtn">Salir</button>`;
+  document.getElementById("logoutBtn").addEventListener("click", () => auth.signOut().then(() => location.reload()));
+  document.getElementById("fFecha").value = new Date().toISOString().slice(0,10);
+  if(!document.querySelector("#fPersonas .persona-form")) agregarFilaPersona();
+  cargarRecorridos();
 });
 
 function toast(msg){
@@ -151,7 +164,6 @@ function toast(msg){
 }
 
 // ===== Pixelado de foto en el navegador (canvas) =====
-let avatarDataUrl = "";
 function pixelateFileToDataUrl(file, onDone){
   const img = new Image();
   img.onload = () => {
@@ -177,47 +189,71 @@ function pixelateFileToDataUrl(file, onDone){
   };
   img.src = URL.createObjectURL(file);
 }
-document.getElementById("fFoto").addEventListener("change", (e) => {
-  const file = e.target.files[0];
-  if(!file) return;
-  pixelateFileToDataUrl(file, (dataUrl) => {
-    avatarDataUrl = dataUrl;
-    document.getElementById("avatarPreviewImg").src = avatarDataUrl;
-    document.getElementById("avatarPreviewLabel").textContent = "Así se va a ver en el recorrido";
+function bindFoto(input, preview){
+  input.addEventListener("change", e => {
+    const file = e.target.files[0];
+    if(!file) return;
+    pixelateFileToDataUrl(file, dataUrl => {
+      input.dataset.avatar = dataUrl;
+      if(preview){ preview.src = dataUrl; preview.style.display = ""; }
+    });
   });
-});
+}
+
+// ===== Personas en el formulario de creación =====
+function agregarFilaPersona(){
+  const row = document.createElement("div");
+  row.className = "add-persona persona-form";
+  row.innerHTML = `
+    <input type="text" placeholder="Nombre o apodo" class="p-nombre">
+    <input type="file" accept="image/*" class="p-foto">
+    <img class="p-preview" style="display:none; width:36px; height:36px; border-radius:50%; image-rendering:pixelated;">
+    <button class="btn small secondary p-quitar">Quitar</button>`;
+  bindFoto(row.querySelector(".p-foto"), row.querySelector(".p-preview"));
+  row.querySelector(".p-quitar").addEventListener("click", () => row.remove());
+  document.getElementById("fPersonas").appendChild(row);
+}
+document.getElementById("fAgregarPersona").addEventListener("click", agregarFilaPersona);
+
+// El id de cada participante sale del nombre, sin repetir dentro del recorrido
+async function crearParticipante(recorridoId, recorridoNombre, nombre, avatar){
+  const col = db.collection("recorridos").doc(recorridoId).collection("participantes");
+  const base = slugify(nombre);
+  let id = base, n = 2;
+  while((await col.doc(id).get()).exists) id = base + "-" + (n++);
+  await col.doc(id).set({ nombre, avatar: avatar || "", recorridoNombre, uid: null, migrado: true, creado: Date.now() });
+}
 
 // ===== Crear recorrido =====
 document.getElementById("crearBtn").addEventListener("click", async () => {
   const nombre = document.getElementById("fNombre").value.trim();
   const dias = parseInt(document.getElementById("fDias").value) || 3;
   const fechaInicio = document.getElementById("fFecha").value;
-  const heroeNombre = document.getElementById("fHeroe").value.trim();
   const popupGlobal = document.getElementById("fPopup").value.trim();
-  const codigoAcceso = document.getElementById("fCodigo").value.trim();
+  const personas = Array.from(document.querySelectorAll("#fPersonas .persona-form"))
+    .map(row => ({ nombre: row.querySelector(".p-nombre").value.trim(), avatar: row.querySelector(".p-foto").dataset.avatar || "" }))
+    .filter(p => p.nombre);
 
   if(!nombre){ toast("Ponele un nombre al recorrido"); return; }
+  if(!fechaInicio){ toast("Elegí la fecha de inicio"); return; }
+  if(personas.length === 0){ toast("Agregá al menos una persona"); return; }
 
   const btn = document.getElementById("crearBtn");
   btn.disabled = true; btn.textContent = "Creando...";
   try{
     const docRef = await db.collection("recorridos").add({
-      nombre, dias, fechaInicio, heroeNombre,
-      heroeAvatar: avatarDataUrl || "",
+      nombre, dias, fechaInicio,
       popupGlobal: popupGlobal || "",
-      codigoAcceso: codigoAcceso || "",
       activo: true,
       creado: Date.now()
     });
-    const url = `${location.origin}${location.pathname.replace("admin.html","index.html")}?r=${docRef.id}`;
+    for(const p of personas) await crearParticipante(docRef.id, nombre, p.nombre, p.avatar);
+    const url = linkDe(docRef.id);
     document.getElementById("crearMsg").innerHTML = `Recorrido creado. Link: <a href="${url}" target="_blank">${url}</a>`;
     document.getElementById("fNombre").value = "";
-    document.getElementById("fHeroe").value = "";
     document.getElementById("fPopup").value = "";
-    document.getElementById("fCodigo").value = "";
-    avatarDataUrl = "";
-    document.getElementById("avatarPreviewImg").src = "";
-    document.getElementById("avatarPreviewLabel").textContent = "Sin foto — se usa un avatar genérico";
+    document.getElementById("fPersonas").innerHTML = "";
+    agregarFilaPersona();
     cargarRecorridos();
   }catch(e){
     console.error(e);
@@ -226,8 +262,14 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
   btn.disabled = false; btn.textContent = "Crear recorrido";
 });
 
-// ===== Listado + monitoreo en vivo + mensajes =====
+function linkDe(id){
+  return `${location.origin}${location.pathname.replace("admin.html","index.html")}?r=${id}`;
+}
+
+// ===== Listado + monitoreo en vivo =====
+const listeners = [];
 async function cargarRecorridos(){
+  listeners.splice(0).forEach(unsub => unsub());
   const listEl = document.getElementById("recorridosList");
   try{
     const snap = await db.collection("recorridos").orderBy("creado","desc").get();
@@ -236,55 +278,55 @@ async function cargarRecorridos(){
     snap.forEach(doc => {
       const r = doc.data();
       const id = doc.id;
-      const url = `${location.origin}${location.pathname.replace("admin.html","index.html")}?r=${id}`;
+      const url = linkDe(id);
       const item = document.createElement("div");
       item.className = "recorrido-item";
       item.innerHTML = `
-        <h3>${r.nombre || "(sin nombre)"} <span class="${r.activo ? 'tag-activo' : 'tag-archivado'}">${r.activo ? 'activo' : 'archivado'}</span></h3>
-        <div class="meta">${r.dias} días · desde ${r.fechaInicio || "?"} · héroe: ${r.heroeNombre || "—"}</div>
+        <h3>${escapeHtml(r.nombre || "(sin nombre)")} <span class="${r.activo ? 'tag-activo' : 'tag-archivado'}">${r.activo ? 'activo' : 'archivado'}</span></h3>
+        <div class="meta">${r.dias} días · desde ${escapeHtml(r.fechaInicio || "?")}</div>
         <div class="link-box">
           <input type="text" readonly value="${url}">
-          <button class="btn small secondary" onclick="navigator.clipboard.writeText('${url}'); toast('Link copiado')">Copiar</button>
-          <button class="btn small secondary" onclick="toggleActivo('${id}', ${!r.activo})">${r.activo ? 'Archivar' : 'Reactivar'}</button>
-          <button class="btn small secondary" onclick="toggleEditar('${id}')">Editar</button>
-          <button class="btn small secondary" style="color:#A65136; border-color:#A65136;" onclick="eliminarRecorrido('${id}', '${(r.nombre||'').replace(/'/g,"\\'")}')">Eliminar</button>
+          <button class="btn small secondary" data-accion="copiar">Copiar</button>
+          <button class="btn small secondary" data-accion="archivar">${r.activo ? 'Archivar' : 'Reactivar'}</button>
+          <button class="btn small secondary" data-accion="editar">Editar</button>
+          <button class="btn small secondary" data-accion="eliminar" style="color:#A65136; border-color:#A65136;">Eliminar</button>
         </div>
-        <div id="editBox-${id}" style="display:none; border-top:1px solid var(--line); margin-top:6px; padding-top:12px;">
+        <div class="edit-box" style="display:none; border-top:1px solid var(--line); margin-top:6px; padding-top:12px;">
           <label>Nombre del recorrido</label>
-          <input type="text" id="e-nombre-${id}" value="${(r.nombre||'').replace(/"/g,'&quot;')}">
+          <input type="text" class="e-nombre" value="${escapeHtml(r.nombre||'')}">
           <div class="row">
             <div>
               <label>Cantidad de días</label>
-              <input type="number" id="e-dias-${id}" value="${r.dias||3}" min="1" max="14">
+              <input type="number" class="e-dias" value="${r.dias||3}" min="1" max="14">
             </div>
             <div>
               <label>Fecha de inicio</label>
-              <input type="date" id="e-fecha-${id}" value="${r.fechaInicio||''}">
+              <input type="date" class="e-fecha" value="${escapeHtml(r.fechaInicio||'')}">
             </div>
           </div>
-          <label>Nombre del héroe/a</label>
-          <input type="text" id="e-heroe-${id}" value="${(r.heroeNombre||'').replace(/"/g,'&quot;')}">
-          <label>Cambiar foto del avatar (opcional)</label>
-          <input type="file" accept="image/*" id="e-foto-${id}">
-          <div class="avatar-preview">
-            <img id="e-preview-${id}" src="${r.heroeAvatar||''}" alt="" style="${r.heroeAvatar ? '' : 'display:none;'}">
-            <span style="font-size:12px; color:var(--ink-soft);">Si no subís una nueva, se mantiene la actual.</span>
-          </div>
           <label>Mensaje pop-up de bienvenida</label>
-          <textarea id="e-popup-${id}">${r.popupGlobal||''}</textarea>
-          <label>Código de acceso (opcional)</label>
-          <input type="text" id="e-codigo-${id}" value="${(r.codigoAcceso||'').replace(/"/g,'&quot;')}">
-          <button class="btn small" style="margin-top:10px;" onclick="guardarEdicion('${id}')">Guardar cambios</button>
+          <textarea class="e-popup">${escapeHtml(r.popupGlobal||'')}</textarea>
+          <button class="btn small" style="margin-top:10px;" data-accion="guardar">Guardar cambios</button>
         </div>
-        <div class="participantes-box" id="parts-${id}">Cargando participantes...</div>
+        <div class="personas-box">
+          <h4>Personas</h4>
+          <div class="personas-list">Cargando...</div>
+          <div class="add-persona">
+            <input type="text" placeholder="Agregar persona (nombre o apodo)" class="a-nombre">
+            <input type="file" accept="image/*" class="a-foto">
+            <button class="btn small" data-accion="agregar">Agregar</button>
+          </div>
+        </div>
         <div class="msg-box">
-          <select id="sel-${id}"><option value="">Elegir persona...</option></select>
-          <input type="text" id="msg-${id}" placeholder="Mensaje puntual...">
-          <button class="btn small" onclick="enviarMensaje('${id}')">Enviar</button>
+          <select class="msg-sel"><option value="">Elegir persona...</option></select>
+          <input type="text" class="msg-txt" placeholder="Mensaje puntual...">
+          <button class="btn small" data-accion="mensaje">Enviar</button>
         </div>
       `;
       listEl.appendChild(item);
-      escucharParticipantes(id);
+      bindFoto(item.querySelector(".a-foto"), null);
+      item.querySelectorAll("[data-accion]").forEach(b => b.addEventListener("click", () => accionRecorrido(b.dataset.accion, id, r, item)));
+      escucharRecorrido(id, r, item);
     });
   }catch(e){
     console.error(e);
@@ -292,120 +334,179 @@ async function cargarRecorridos(){
   }
 }
 
-function escucharParticipantes(recorridoId){
-  db.collection("recorridos").doc(recorridoId).collection("participantes")
-    .onSnapshot(snap => {
-      const box = document.getElementById("parts-"+recorridoId);
-      const sel = document.getElementById("sel-"+recorridoId);
-      if(!box) return;
-      if(snap.empty){ box.innerHTML = "<p style='font-size:12.5px; color:var(--ink-soft);'>Nadie entró todavía.</p>"; return; }
-      box.innerHTML = "";
-      sel.innerHTML = '<option value="">Elegir persona...</option>';
-      snap.forEach(doc => {
-        const p = doc.data();
-        const st = p.state || {};
-        let total = 0, done = 0;
-        Object.keys(st).forEach(dia => {
-          Object.keys(st[dia]).forEach(k => { total++; if(st[dia][k]) done++; });
-        });
-        const pct = total ? Math.round(done/total*100) : 0;
-        const row = document.createElement("div");
-        row.className = "participante-row";
-        row.innerHTML = `
-          <div>
-            <div>${p.nombre}</div>
-            <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
-          </div>
-          <div style="color:var(--ink-soft); font-size:12px;">${done}/${total}</div>
-        `;
-        box.appendChild(row);
-        const opt = document.createElement("option");
-        opt.value = doc.id; opt.textContent = p.nombre;
-        sel.appendChild(opt);
+async function accionRecorrido(accion, id, r, item){
+  const ref = db.collection("recorridos").doc(id);
+  try{
+    if(accion === "copiar"){ navigator.clipboard.writeText(linkDe(id)); toast("Link copiado"); }
+    if(accion === "archivar"){
+      await ref.update({ activo: !r.activo });
+      toast(r.activo ? "Recorrido archivado" : "Recorrido reactivado");
+      cargarRecorridos();
+    }
+    if(accion === "editar"){
+      const box = item.querySelector(".edit-box");
+      box.style.display = box.style.display === "none" ? "block" : "none";
+    }
+    if(accion === "guardar"){
+      await ref.update({
+        nombre: item.querySelector(".e-nombre").value.trim(),
+        dias: parseInt(item.querySelector(".e-dias").value) || 3,
+        fechaInicio: item.querySelector(".e-fecha").value,
+        popupGlobal: item.querySelector(".e-popup").value.trim()
       });
-    });
+      toast("Cambios guardados");
+      cargarRecorridos();
+    }
+    if(accion === "eliminar") await eliminarRecorrido(id, r.nombre || "");
+    if(accion === "agregar"){
+      const input = item.querySelector(".a-nombre");
+      const foto = item.querySelector(".a-foto");
+      const nombre = input.value.trim();
+      if(!nombre){ toast("Escribí un nombre"); return; }
+      await crearParticipante(id, r.nombre || "", nombre, foto.dataset.avatar || "");
+      input.value = ""; foto.value = ""; delete foto.dataset.avatar;
+      toast(`${nombre} agregado`);
+    }
+    if(accion === "mensaje"){
+      const pid = item.querySelector(".msg-sel").value;
+      const mensaje = item.querySelector(".msg-txt").value.trim();
+      if(!pid || !mensaje){ toast("Elegí a alguien y escribí el mensaje"); return; }
+      await ref.collection("participantes").doc(pid).update({ popupPersonal: { mensaje, leido: false } });
+      item.querySelector(".msg-txt").value = "";
+      toast("Mensaje enviado — lo va a ver la próxima vez que entre");
+    }
+  }catch(e){
+    console.error(e);
+    toast("Error. Revisá la consola.");
+  }
 }
 
-async function toggleActivo(id, nuevoValor){
-  await db.collection("recorridos").doc(id).set({ activo: nuevoValor }, { merge: true });
-  toast(nuevoValor ? "Recorrido reactivado" : "Recorrido archivado");
-  cargarRecorridos();
+function escucharRecorrido(recorridoId, r, item){
+  const ref = db.collection("recorridos").doc(recorridoId);
+  let participantes = {}, tareas = {};
+  const render = () => renderPersonas(recorridoId, r, item, participantes, tareas);
+  listeners.push(ref.collection("participantes").onSnapshot(snap => {
+    participantes = {};
+    snap.forEach(doc => participantes[doc.id] = doc.data());
+    Object.keys(participantes).forEach(pid => {
+      if(participantes[pid].state && !participantes[pid].migrado) migrarProgresoViejo(recorridoId, pid, participantes[pid]);
+    });
+    render();
+  }, e => console.error(e)));
+  listeners.push(ref.collection("tareas").onSnapshot(snap => {
+    tareas = {};
+    snap.forEach(doc => tareas[doc.id] = doc.data());
+    render();
+  }, e => console.error(e)));
+}
+
+function renderPersonas(recorridoId, r, item, participantes, tareas){
+  const box = item.querySelector(".personas-list");
+  const sel = item.querySelector(".msg-sel");
+  const pids = Object.keys(participantes).sort((a,b) => (participantes[a].nombre||"").localeCompare(participantes[b].nombre||""));
+  sel.innerHTML = '<option value="">Elegir persona...</option>' + pids.map(pid => `<option value="${pid}">${escapeHtml(participantes[pid].nombre)}</option>`).join("");
+  if(pids.length === 0){ box.innerHTML = "<p style='font-size:12.5px; color:var(--ink-soft);'>Todavía no hay personas en este recorrido.</p>"; return; }
+  box.innerHTML = "";
+  pids.forEach(pid => {
+    const p = participantes[pid];
+    const puntos = Object.values(tareas).filter(t => t.pid === pid).length;
+    const dias = new Set(Object.values(tareas).filter(t => t.pid === pid).map(t => t.dia)).size;
+    const av = avatarDe(p);
+    const row = document.createElement("div");
+    row.className = "persona-row";
+    row.innerHTML = `
+      ${av ? `<img src="${av}" alt="">` : `<div class="sin-foto">${escapeHtml((p.nombre||"?").charAt(0).toUpperCase())}</div>`}
+      <div class="info">${escapeHtml(p.nombre)}
+        <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}</small>
+      </div>
+      <div class="acciones">
+        <label class="btn small secondary" style="margin:0; font-size:12.5px; color:var(--ink);">Foto<input type="file" accept="image/*" style="display:none;"></label>
+        ${p.uid ? '<button class="btn small secondary" data-p="liberar">Liberar</button>' : ''}
+        <button class="btn small secondary" data-p="quitar" style="color:#A65136; border-color:#A65136;">Quitar</button>
+      </div>`;
+    const pref = db.collection("recorridos").doc(recorridoId).collection("participantes").doc(pid);
+    row.querySelector("input[type=file]").addEventListener("change", e => {
+      const file = e.target.files[0];
+      if(!file) return;
+      pixelateFileToDataUrl(file, async dataUrl => {
+        try{ await pref.update({ avatar: dataUrl }); toast("Foto actualizada"); }
+        catch(err){ console.error(err); toast("No se pudo guardar la foto"); }
+      });
+    });
+    const liberar = row.querySelector('[data-p="liberar"]');
+    if(liberar) liberar.addEventListener("click", async () => {
+      if(!confirm(`¿Desvincular la cuenta de Google de ${p.nombre}? La próxima persona que entre con ese nombre la va a poder tomar. Sus tareas tildadas se mantienen.`)) return;
+      await pref.update({ uid: null });
+      toast("Cuenta desvinculada");
+    });
+    row.querySelector('[data-p="quitar"]').addEventListener("click", async () => {
+      if(!confirm(`¿Quitar a ${p.nombre} del recorrido? Se borran también sus tareas tildadas.`)) return;
+      try{
+        const tSnap = await db.collection("recorridos").doc(recorridoId).collection("tareas").where("pid","==",pid).get();
+        await Promise.all(tSnap.docs.map(d => d.ref.delete()));
+        await pref.delete();
+        toast(`${p.nombre} quitado`);
+      }catch(err){ console.error(err); toast("No se pudo quitar"); }
+    });
+    box.appendChild(row);
+  });
+}
+
+// Antes cada persona tenía su propio checklist (campo "state"). Lo pasamos al checklist compartido,
+// firmado a su nombre. Si dos personas tildaron lo mismo, queda la primera que se migra.
+const migrando = new Set();
+async function migrarProgresoViejo(recorridoId, pid, p){
+  if(migrando.has(recorridoId + "/" + pid)) return;
+  migrando.add(recorridoId + "/" + pid);
+  try{
+    const ref = db.collection("recorridos").doc(recorridoId);
+    const existentes = new Set((await ref.collection("tareas").get()).docs.map(d => d.id));
+    const batch = db.batch();
+    let migradas = 0;
+    Object.keys(p.state || {}).forEach(d => {
+      Object.keys(p.state[d] || {}).forEach(key => {
+        const id = d + "_" + key;
+        if(!p.state[d][key] || existentes.has(id)) return;
+        existentes.add(id);
+        migradas++;
+        batch.set(ref.collection("tareas").doc(id), {
+          dia: Number(d), key, pid, nombre: p.nombre || "", uid: p.uid || null,
+          creado: p.actualizado || Date.now(), migrado: true
+        });
+      });
+    });
+    const update = { migrado: true };
+    if(!p.avatar && avatarDe(p)) update.avatar = avatarDe(p);
+    batch.update(ref.collection("participantes").doc(pid), update);
+    await batch.commit();
+    if(migradas) toast(`Progreso de ${p.nombre} migrado al checklist compartido`);
+  }catch(e){
+    console.error("No se pudo migrar", e);
+    migrando.delete(recorridoId + "/" + pid);
+  }
 }
 
 async function eliminarRecorrido(id, nombre){
-  const confirmacion = prompt(`Esto borra "${nombre}" para siempre, junto con el progreso y los comentarios de todos los que entraron. Escribí ELIMINAR para confirmar:`);
+  const confirmacion = prompt(`Esto borra "${nombre}" para siempre, junto con las personas, las tareas y los comentarios del recorrido. Escribí ELIMINAR para confirmar:`);
   if(confirmacion !== "ELIMINAR"){
     if(confirmacion !== null) toast("No coincide, no se borró nada.");
     return;
   }
   try{
-    const partSnap = await db.collection("recorridos").doc(id).collection("participantes").get();
-    const batchDeletes = [];
-    partSnap.forEach(doc => batchDeletes.push(doc.ref.delete()));
-    const comSnap = await db.collection("recorridos").doc(id).collection("comentarios").get();
-    comSnap.forEach(doc => batchDeletes.push(doc.ref.delete()));
-    await Promise.all(batchDeletes);
-    await db.collection("recorridos").doc(id).delete();
+    const ref = db.collection("recorridos").doc(id);
+    const borrados = [];
+    for(const sub of ["participantes","tareas","comentarios"]){
+      const snap = await ref.collection(sub).get();
+      snap.forEach(doc => borrados.push(doc.ref.delete()));
+    }
+    await Promise.all(borrados);
+    await ref.delete();
     toast("Recorrido eliminado");
     cargarRecorridos();
   }catch(e){
     console.error(e);
     toast("Error al eliminar. Revisá la consola.");
   }
-}
-
-function toggleEditar(id){
-  const box = document.getElementById("editBox-"+id);
-  box.style.display = box.style.display === "none" ? "block" : "none";
-  const fotoInput = document.getElementById("e-foto-"+id);
-  if(fotoInput && !fotoInput.dataset.bound){
-    fotoInput.dataset.bound = "1";
-    fotoInput.addEventListener("change", (e) => {
-      const file = e.target.files[0];
-      if(!file) return;
-      pixelateFileToDataUrl(file, (dataUrl) => {
-        fotoInput.dataset.newAvatar = dataUrl;
-        const prev = document.getElementById("e-preview-"+id);
-        prev.src = dataUrl;
-        prev.style.display = "";
-      });
-    });
-  }
-}
-
-async function guardarEdicion(id){
-  const nombre = document.getElementById("e-nombre-"+id).value.trim();
-  const dias = parseInt(document.getElementById("e-dias-"+id).value) || 3;
-  const fechaInicio = document.getElementById("e-fecha-"+id).value;
-  const heroeNombre = document.getElementById("e-heroe-"+id).value.trim();
-  const popupGlobal = document.getElementById("e-popup-"+id).value.trim();
-  const codigoAcceso = document.getElementById("e-codigo-"+id).value.trim();
-  const fotoInput = document.getElementById("e-foto-"+id);
-  const nuevoAvatar = fotoInput ? fotoInput.dataset.newAvatar : null;
-
-  const update = { nombre, dias, fechaInicio, heroeNombre, popupGlobal, codigoAcceso };
-  if(nuevoAvatar) update.heroeAvatar = nuevoAvatar;
-
-  try{
-    await db.collection("recorridos").doc(id).set(update, { merge: true });
-    toast("Cambios guardados");
-    cargarRecorridos();
-  }catch(e){
-    console.error(e);
-    toast("Error al guardar");
-  }
-}
-
-async function enviarMensaje(recorridoId){
-  const sel = document.getElementById("sel-"+recorridoId);
-  const input = document.getElementById("msg-"+recorridoId);
-  const participanteId = sel.value;
-  const mensaje = input.value.trim();
-  if(!participanteId || !mensaje){ toast("Elegí a alguien y escribí el mensaje"); return; }
-  await db.collection("recorridos").doc(recorridoId).collection("participantes").doc(participanteId)
-    .set({ popupPersonal: { mensaje, leido: false } }, { merge: true });
-  input.value = "";
-  toast("Mensaje enviado — lo va a ver la próxima vez que entre");
 }
 </script>
 </body>
