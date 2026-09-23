@@ -411,13 +411,14 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
     const p = participantes[pid];
     const puntos = Object.values(tareas).filter(t => t.pid === pid).length;
     const dias = new Set(Object.values(tareas).filter(t => t.pid === pid).map(t => t.dia)).size;
+    const victoria = calcularVictoria(tareas, pid, r);
     const av = avatarDe(p);
     const row = document.createElement("div");
     row.className = "persona-row";
     row.innerHTML = `
       ${av ? `<img src="${av}" alt="">` : `<div class="sin-foto">${escapeHtml((p.nombre||"?").charAt(0).toUpperCase())}</div>`}
       <div class="info">${escapeHtml(p.nombre)}
-        <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}</small>
+        <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}${victoria === null ? "" : ` · ${victoria}% de sus días`}</small>
       </div>
       <div class="acciones">
         <label class="btn small secondary" style="margin:0; font-size:12.5px; color:var(--ink);">Foto<input type="file" accept="image/*" style="display:none;"></label>

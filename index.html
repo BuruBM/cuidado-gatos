@@ -918,12 +918,7 @@ function toast(msg){
 
 // ===== Fechas del recorrido =====
 // Día de hoy dentro del recorrido (1 = primer día). Sin fecha de inicio, 0 (nunca termina).
-function diaDeHoy(){
-  if(!recorrido.fechaInicio) return 0;
-  const inicio = new Date(recorrido.fechaInicio + "T00:00:00");
-  const hoy = new Date(); hoy.setHours(0,0,0,0);
-  return Math.round((hoy - inicio) / 86400000) + 1;
-}
+function diaDeHoy(){ return diaDelRecorrido(recorrido); }
 function recorridoTerminado(){ return !!recorrido.fechaInicio && diaDeHoy() > TOTAL_DIAS; }
 
 // ===== Puntos y % de victoria =====
@@ -938,23 +933,7 @@ function diasDe(pid){
   for(const id in tareas) if(tareas[id].pid === pid) dias.add(Number(tareas[id].dia));
   return dias;
 }
-// % de victoria = obligatorias que hizo ÷ (las que hizo + las que quedaron sin hacer en sus días).
-// Lo que hizo otra persona no le resta. El día en curso todavía no cuenta como pendiente.
-function victoriaDe(pid){
-  const dias = diasDe(pid);
-  if(dias.size === 0) return null;
-  const hasta = recorridoTerminado() ? TOTAL_DIAS : diaDeHoy() - 1;
-  let mias = 0, pendientes = 0;
-  dias.forEach(d => {
-    TAREAS_OBLIGATORIAS.forEach(k => {
-      const t = tareas[tareaId(d, k)];
-      if(t){ if(t.pid === pid) mias++; }
-      else if(d <= hasta) pendientes++;
-    });
-  });
-  if(mias + pendientes === 0) return 100;
-  return Math.round(mias / (mias + pendientes) * 100);
-}
+function victoriaDe(pid){ return calcularVictoria(tareas, pid, recorrido); }
 function totalPuntosPosibles(){ return TOTAL_DIAS * tareasDelDia().length; }
 function ranking(){
   return Object.keys(participantes)
@@ -1185,7 +1164,7 @@ function renderDayPanels(){
         groupsHtml += `
           <div class="task" data-day="${d}" data-key="${t.key}">
             <div class="checkbox"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>
-            <div class="task-text"><b>${t.title}${t.opcional ? '<span class="task-opcional">opcional · suma puntos</span>' : ''}</b><span class="task-detail">${t.detail}</span><div class="task-by" style="display:none;"></div></div>
+            <div class="task-text"><b>${t.title}${t.etiqueta ? `<span class="task-opcional">${t.etiqueta}</span>` : ''}</b><span class="task-detail">${t.detail}</span><div class="task-by" style="display:none;"></div></div>
           </div>`;
       });
       groupsHtml += `</div>`;
@@ -1327,8 +1306,8 @@ function mensajeCierre(pct){
   if(pct === null) return { titulo:"Este recorrido terminó", texto:"No llegaste a tildar nada esta vez. Milo y Zoe igual te quieren (un poco).", confeti:0 };
   if(pct === 100) return { titulo:"¡Sobrevivieron!", texto:"Completaste todo lo que te tocaba. Milo, Zoe y vos llegaron enteros hasta acá — misión cumplida.", confeti:30 };
   if(pct >= 80) return { titulo:"¡Casi perfecto!", texto:"Milo y Zoe todavía viven. Algo se te escapó, pero nada que un sobrecito no arregle.", confeti:12 };
-  if(pct >= 50) return { titulo:"Buen trabajo en equipo", texto:"Gracias por sumar tus días. Los michis comieron… casi siempre.", confeti:0 };
-  return { titulo:"Los michis tomaron nota 📝", texto:"En tus días quedó más sin hacer que hecho. Milo y Zoe siguen vivos, pero no gracias a vos. La próxima, con más ganas.", confeti:0 };
+  if(pct >= 50) return { titulo:"Gracias por ayudar en la GatiCueva", texto:"Sumaste tus días y los michis lo notaron. Comieron… casi siempre.", confeti:0 };
+  return { titulo:"Tranqui, vení cuando quieras", texto:"Milo y Zoe se las arreglaron. Más o menos. 🙃", confeti:0 };
 }
 
 function renderCierre(){
