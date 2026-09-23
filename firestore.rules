@@ -1,0 +1,83 @@
+rules_version = '2';
+
+// Reglas de seguridad de Firestore para Les Gates.
+// Se pegan en Firebase Console → Firestore Database → Reglas → Publicar.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    // Tiene que coincidir con ADMIN_EMAILS en comun.js
+    function isAdmin() {
+      return signedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.token.email in ['bm.blancom@gmail.com', 'barbarabmontero@gmail.com'];
+    }
+
+    function soyParticipante(rid, pid) {
+      return signedIn()
+        && get(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(pid)).data.get('uid', null) == request.auth.uid;
+    }
+
+    function comentarioPropio() {
+      return signedIn() && resource.data.get('uid', null) == request.auth.uid;
+    }
+
+    match /recorridos/{rid} {
+      allow read: if true;
+      allow write: if isAdmin();
+
+      match /participantes/{pid} {
+        allow read: if true;
+        allow create, delete: if isAdmin();
+        allow update: if isAdmin()
+          // Vincular tu cuenta de Google a un nombre libre de la lista
+          || (signedIn()
+              && resource.data.get('uid', null) == null
+              && request.resource.data.uid == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'reclamado']))
+          // Guardar tus propias preferencias (recordatorios, pop-ups vistos)
+          || (signedIn()
+              && resource.data.get('uid', null) == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notif', 'vioPopupGlobal', 'popupPersonal', 'vioCierre', 'actualizado']));
+      }
+
+      // Checklist compartido: cada tarea de cada día es un documento "dia_key".
+      // Solo se tilda si nadie la tildó antes (create) y solo la destilda quien la tildó.
+      match /tareas/{tid} {
+        allow read: if true;
+        allow create: if isAdmin()
+          || (soyParticipante(rid, request.resource.data.pid)
+              && request.resource.data.uid == request.auth.uid
+              && tid == string(request.resource.data.dia) + '_' + request.resource.data.key);
+        allow update: if isAdmin();
+        allow delete: if isAdmin() || soyParticipante(rid, resource.data.pid);
+      }
+
+      match /comentarios/{cid} {
+        allow read: if true;
+        allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+        allow update: if comentarioPropio() && request.resource.data.uid == request.auth.uid;
+        allow delete: if isAdmin() || comentarioPropio();
+      }
+    }
+
+    // Muro global
+    match /comentarios/{cid} {
+      allow read: if true;
+      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
+      allow update: if comentarioPropio() && request.resource.data.uid == request.auth.uid;
+      allow delete: if isAdmin() || comentarioPropio();
+    }
+
+    // Ranking global (consultas sobre todos los recorridos)
+    match /{path=**}/participantes/{pid} {
+      allow read: if true;
+    }
+    match /{path=**}/tareas/{tid} {
+      allow read: if true;
+    }
+  }
+}
