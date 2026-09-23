@@ -12,6 +12,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
+
 // Tiene que coincidir con la lista de firestore.rules
 const ADMIN_EMAILS = ["bm.blancom@gmail.com", "barbarabmontero@gmail.com"];
 

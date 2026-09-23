@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#F2EEE1">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Les Gates">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <title>Admin — Cuidado de Milo y Zoe</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -52,8 +60,8 @@
   .participante-row:last-child{border-bottom:none;}
   .participante-row .bar{background:var(--line); border-radius:6px; height:6px; width:80px; overflow:hidden; margin-top:3px;}
   .participante-row .bar-fill{background:var(--success); height:100%;}
-  .msg-box{display:flex; gap:8px; margin-top:8px;}
-  .msg-box select, .msg-box input{flex:1;}
+  .msg-dest{display:flex; flex-wrap:wrap; gap:6px; margin:6px 0 8px;}
+  .dest-chip{display:inline-flex; align-items:center; gap:5px; margin:0; font-size:13px; font-weight:600; color:var(--ink); background:#fff; border:1.5px solid var(--line); border-radius:100px; padding:4px 10px; cursor:pointer;}
   .persona-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
   .persona-row:last-child{border-bottom:none;}
   .persona-row img, .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
@@ -317,10 +325,11 @@ async function cargarRecorridos(){
             <button class="btn small" data-accion="agregar">Agregar</button>
           </div>
         </div>
-        <div class="msg-box">
-          <select class="msg-sel"><option value="">Elegir persona...</option></select>
-          <input type="text" class="msg-txt" placeholder="Mensaje puntual...">
-          <button class="btn small" data-accion="mensaje">Enviar</button>
+        <div class="personas-box">
+          <h4>Mensaje pop-up</h4>
+          <div class="msg-dest"></div>
+          <textarea class="msg-txt" placeholder="Ej: ¡No se olviden de las piedras hoy!"></textarea>
+          <button class="btn small" data-accion="mensaje" style="margin-top:8px;">Enviar</button>
         </div>
       `;
       listEl.appendChild(item);
@@ -368,12 +377,15 @@ async function accionRecorrido(accion, id, r, item){
       toast(`${nombre} agregado`);
     }
     if(accion === "mensaje"){
-      const pid = item.querySelector(".msg-sel").value;
+      const pids = Array.from(item.querySelectorAll(".msg-dest input[data-pid]:checked")).map(c => c.dataset.pid);
       const mensaje = item.querySelector(".msg-txt").value.trim();
-      if(!pid || !mensaje){ toast("Elegí a alguien y escribí el mensaje"); return; }
-      await ref.collection("participantes").doc(pid).update({ popupPersonal: { mensaje, leido: false } });
+      if(pids.length === 0 || !mensaje){ toast("Elegí a quién y escribí el mensaje"); return; }
+      const batch = db.batch();
+      pids.forEach(pid => batch.update(ref.collection("participantes").doc(pid), { popupPersonal: { mensaje, leido: false, enviado: Date.now() } }));
+      await batch.commit();
       item.querySelector(".msg-txt").value = "";
-      toast("Mensaje enviado — lo va a ver la próxima vez que entre");
+      item.querySelectorAll(".msg-dest input").forEach(c => c.checked = false);
+      toast(`Mensaje enviado a ${pids.length === 1 ? "1 persona" : pids.length + " personas"} — le aparece al abrir la app (o al instante si la tiene abierta)`);
     }
   }catch(e){
     console.error(e);
@@ -402,9 +414,8 @@ function escucharRecorrido(recorridoId, r, item){
 
 function renderPersonas(recorridoId, r, item, participantes, tareas){
   const box = item.querySelector(".personas-list");
-  const sel = item.querySelector(".msg-sel");
   const pids = Object.keys(participantes).sort((a,b) => (participantes[a].nombre||"").localeCompare(participantes[b].nombre||""));
-  sel.innerHTML = '<option value="">Elegir persona...</option>' + pids.map(pid => `<option value="${pid}">${escapeHtml(participantes[pid].nombre)}</option>`).join("");
+  renderDestinatarios(item, pids, participantes);
   if(pids.length === 0){ box.innerHTML = "<p style='font-size:12.5px; color:var(--ink-soft);'>Todavía no hay personas en este recorrido.</p>"; return; }
   box.innerHTML = "";
   pids.forEach(pid => {
@@ -451,6 +462,20 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
     });
     box.appendChild(row);
   });
+}
+
+// Destinatarios del pop-up: "Todos" o las personas que elijas (se mantiene lo tildado al actualizarse la lista)
+function renderDestinatarios(item, pids, participantes){
+  const dest = item.querySelector(".msg-dest");
+  const marcados = new Set(Array.from(dest.querySelectorAll("input[data-pid]:checked")).map(c => c.dataset.pid));
+  if(pids.length === 0){ dest.innerHTML = ""; return; }
+  dest.innerHTML = `<label class="dest-chip"><input type="checkbox" class="msg-todos"> Todos</label>` +
+    pids.map(pid => `<label class="dest-chip"><input type="checkbox" data-pid="${pid}" ${marcados.has(pid) ? "checked" : ""}> ${escapeHtml(participantes[pid].nombre)}</label>`).join("");
+  const todos = dest.querySelector(".msg-todos");
+  const individuales = Array.from(dest.querySelectorAll("input[data-pid]"));
+  todos.checked = individuales.length > 0 && individuales.every(c => c.checked);
+  todos.addEventListener("change", () => individuales.forEach(c => c.checked = todos.checked));
+  individuales.forEach(c => c.addEventListener("change", () => { todos.checked = individuales.every(x => x.checked); }));
 }
 
 // Antes cada persona tenía su propio checklist (campo "state"). Lo pasamos al checklist compartido,
