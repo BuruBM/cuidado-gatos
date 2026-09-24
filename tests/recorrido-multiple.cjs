@@ -141,6 +141,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
 
   for(const p of [pam, lau, jua]){ await p.goto(urlDe(p)); await p.waitForSelector("#gateLoginBtn", { state:"visible" }); }
   check(await pam.isHidden("#appWrap"), "sin login no se ve el recorrido");
+  check(await pam.evaluate(() => !document.querySelector('svg.paw') && !!document.querySelector("#gateWrap .icono-caras")), "ingreso al recorrido con el ícono nuevo (caritas)");
   await pam.screenshot({ path: SHOTS + "/01-entrada.png" });
 
   // Pamela → "Pam"
