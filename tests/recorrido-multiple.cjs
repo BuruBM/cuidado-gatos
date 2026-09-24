@@ -141,6 +141,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
 
   for(const p of [pam, lau, jua]){ await p.goto(urlDe(p)); await p.waitForSelector("#gateLoginBtn", { state:"visible" }); }
   check(await pam.isHidden("#appWrap"), "sin login no se ve el recorrido");
+  check(await pam.evaluate(() => !document.querySelector('svg.paw') && !!document.querySelector("#gateWrap .icono-caras")), "ingreso al recorrido con el ícono nuevo (caritas)");
   await pam.screenshot({ path: SHOTS + "/01-entrada.png" });
 
   // Pamela → "Pam"
@@ -312,9 +313,11 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
     check(txtPos.includes(`${puntosOraculo(tareas, pid)} pts`), `posiciones: ${nom} tiene ${puntosOraculo(tareas, pid)} pts`);
   }
   await pam.waitForFunction(() => document.querySelectorAll("#otrosMarcadores .otro-marcador").length === 2, null, { timeout: 5000 });
-  const marcadores = await pam.$$eval("#otrosMarcadores .otro-marcador", els => els.map(e => ({ t: e.textContent.trim(), img: !!e.querySelector("img"), w: e.getBoundingClientRect().width })));
-  check(marcadores.every(m => m.w >= 29), "marcadores de los demás de 30px (" + marcadores.map(m => m.w).join(", ") + ")");
-  check(marcadores.some(m => m.img) && marcadores.some(m => m.t === "J"), "Lauti aparece con su foto y Juan con 'J'");
+  const marcadores = await pam.$$eval("#otrosMarcadores .otro-marcador", els => els.map(e => ({ t: e.textContent.trim(), img: !!e.querySelector("svg.av image"), cuerpo: e.querySelectorAll("svg.av rect").length, h: Math.round(e.getBoundingClientRect().height) })));
+  check(marcadores.every(m => m.h >= 40 && m.cuerpo > 20), "marcadores de los demás: muñequito con cuerpo pixelado (" + marcadores.map(m => m.h + "px").join(", ") + ")");
+  check(marcadores.some(m => m.img) && marcadores.some(m => m.t === "J"), "Lauti aparece con la cabeza de su foto y Juan con 'J'");
+  const combos = await pam.evaluate(() => ["Pam","Lauti","Juan","Sofi"].map(n => JSON.stringify(comboAvatar(n))));
+  check(new Set(combos).size >= 3, "los cuerpos de los avatares tienen distintas combinaciones de colores");
   const abrevs = await pam.evaluate(() => {
     const guardado = participantes;
     participantes = { a:{nombre:"Pam"}, b:{nombre:"Pedro"}, c:{nombre:"Juan"}, d:{nombre:"Juana"}, e:{nombre:"Sofi"} };

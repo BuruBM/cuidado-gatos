@@ -57,7 +57,9 @@
   header.hero .eyebrow-row{
     display:flex; align-items:center; gap:10px; margin-bottom:10px;
   }
-  header.hero .paw{width:26px;height:26px;flex:none;}
+  .icono-caras{flex:none; overflow:visible;}
+  .icono-gate{width:84px; height:40px; margin-bottom:4px;}
+  .icono-hero{width:46px; height:22px;}
   h1{
     font-family:'Fraunces', serif;
     font-weight:700;
@@ -307,6 +309,8 @@
   .landing-header p{color:var(--ink-soft); font-size:15px; margin:0;}
   .cats-intro{display:flex; gap:10px; margin-bottom:8px;}
   .cats-intro img{width:50%; height:160px; object-fit:cover; border-radius:18px; box-shadow:var(--shadow);}
+  /* En escritorio la foto es más ancha y el recorte queda justo abajo: se corre un poco */
+  @media (min-width:600px){ .cats-intro img{object-position:50% 62%;} }
   .landing-section-title{display:flex; align-items:center; gap:10px; font-family:'Fraunces',serif; font-weight:600; font-size:21px; margin:30px 0 12px;}
   .landing-section-title::before{content:""; width:10px; height:10px; border-radius:50%; background:var(--sec, var(--mustard)); flex:none;}
 
@@ -438,6 +442,17 @@
 
   .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:100px; font-size:13.5px; opacity:0; transition:opacity .3s ease; pointer-events:none; z-index:60; max-width:90vw; text-align:center;}
   .toast.show{opacity:1;}
+
+  /* Avatares: cuerpo pixelado + cabeza, sin círculo ni fondo. Cada lugar define su alto. */
+  svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .podio-mini-avatar:has(svg.av), .standing-row .dot-color:has(svg.av), .otro-marcador:has(svg.av), .gate-persona-av:has(svg.av), .tu-recorrido .tr-av:has(svg.av){border-radius:0 !important; background:transparent !important; border:none !important; box-shadow:none !important; overflow:visible !important; width:auto !important;}
+  .podio-mini-avatar:has(svg.av){height:38px !important;}
+  .pm1 .podio-mini-avatar:has(svg.av){height:44px !important;}
+  .standing-row .dot-color:has(svg.av){height:36px !important; min-width:22px;}
+  .otro-marcador:has(svg.av){height:46px !important; transform:translate(-50%, -96%) !important; filter:drop-shadow(0 1px 1.5px rgba(43,38,32,0.45));}
+  .gate-persona-av:has(svg.av){height:44px !important; min-width:36px;}
+  .tu-recorrido .tr-av:has(svg.av){height:56px !important; min-width:44px;}
+  .tu-recorrido .tr-av svg.av{filter:drop-shadow(0 0 0.8px #F7F3EA) drop-shadow(0 0 0.8px #F7F3EA);}
 </style>
 <link rel="stylesheet" href="tema-oscuro.css">
 </head>
@@ -505,7 +520,7 @@
       <ul>
         <li>Porciones (alimento seco): de a poco, apenas cubriendo la base del plato. Se puede volver a servir cuando piden, pero no si solo pide Zoe.</li>
         <li>Quedate en la cocina un rato mientras comen: si te vas, Milo se distrae y se va, y Zoe le come la comida a él.</li>
-        <li>Si te vas muchas horas durante el día: dejales el gallito con alimento seco en el living. A la noche podés usarlo también para que no maúllen. No hace falta llenarlo.</li>
+        <li>Si te vas muchas horas durante el día: dejales el gallito con alimento seco en el living. Si dormís en casa, a la noche también podés usarlo para que no maúllen. No hace falta llenarlo.</li>
         <li>Agua: hay en la cocina y en el cuarto — chequear siempre que esté limpia y disponible.</li>
       </ul>
     </div>
@@ -527,7 +542,7 @@
     <summary><span class="acc-icon">🌿</span><span>Recordatorios generales<span class="acc-sub">terraza, piedras y juego</span></span></summary>
     <div class="acc-body">
       <ul>
-        <li>Dejar la terraza cerrada cuando no estés, y el jardín de invierno siempre abierto.</li>
+        <li>La puerta al jardín de invierno queda siempre abierta. La terraza puede estar abierta mientras estés en casa, pero cerrada siempre que no haya nadie.</li>
         <li>Piedras: limpiar al menos día por medio.</li>
         <li>Jugar: siempre bienvenido cuando quieras. Puede que te ignoren — es normal, son gatos.</li>
       </ul>
@@ -559,7 +574,7 @@
 <div class="gate-wrap" id="gateWrap">
   <div class="gate-card">
     <div class="eyebrow-row" style="justify-content:center;">
-      <svg class="paw" viewBox="0 0 24 24" fill="none" width="26" height="26"><circle cx="12" cy="16" r="5" fill="#C79A2E"/><circle cx="5" cy="8" r="2.4" fill="#355F58"/><circle cx="10" cy="4.5" r="2.2" fill="#C79A2E"/><circle cx="15.5" cy="4.5" r="2.2" fill="#355F58"/><circle cx="19.5" cy="9" r="2.2" fill="#C79A2E"/></svg>
+      <svg class="icono-caras icono-gate" viewBox="0 1.2 16 7.6" shape-rendering="crispEdges" aria-hidden="true"><g transform="rotate(-10 4.1 5.5)"><rect x="0.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="3.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="5.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/></g><g transform="rotate(10 11.9 5.5)"><rect x="8.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="11.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="13.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/></g></svg>
     </div>
     <h1 id="gateTitle">Cargando...</h1>
     <p id="gateSubtitle"></p>
@@ -582,7 +597,7 @@
   <header class="hero">
     <a href="index.html" class="btn secondary" style="display:inline-block; text-decoration:none; margin-bottom:14px; font-size:13px; padding:8px 16px;">← Volver al inicio</a>
     <div class="eyebrow-row">
-      <svg class="paw" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="16" r="5" fill="#C79A2E"/><circle cx="5" cy="8" r="2.4" fill="#355F58"/><circle cx="10" cy="4.5" r="2.2" fill="#C79A2E"/><circle cx="15.5" cy="4.5" r="2.2" fill="#355F58"/><circle cx="19.5" cy="9" r="2.2" fill="#C79A2E"/></svg>
+      <svg class="icono-caras icono-hero" viewBox="0 1.2 16 7.6" shape-rendering="crispEdges" aria-hidden="true"><g transform="rotate(-10 4.1 5.5)"><rect x="0.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="3.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="5.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/></g><g transform="rotate(10 11.9 5.5)"><rect x="8.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="11.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="13.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/></g></svg>
       <span style="font-size:13px;font-weight:700;color:var(--ink-soft);" id="tagLine">GUÍA</span>
     </div>
     <h1 id="pageTitle">Cuidado de Milo &amp; Zoe</h1>
@@ -624,14 +639,12 @@
           <rect x="2.60" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="5.20" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="7.80" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
-          <rect x="-10.40" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-7.80" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-5.20" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-2.60" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="0.00" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="2.60" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="5.20" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
-          <rect x="-10.40" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-7.80" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-5.20" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-2.60" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
@@ -728,7 +741,7 @@
       <div><b>Quedate en la cocina un rato mientras comen:</b> Si te vas, Milo se distrae y se va sin terminar, y Zoe le come la comida a él.</div>
     </div>
     <div class="standing-note" style="background:var(--mustard-soft); border-color:#E4CE93;">🥣
-      <div><b>Si te vas muchas horas durante el día:</b> Dejales el gallito (dispenser) con alimento seco en el living, para que no se queden sin comer. A la noche podés usarlo también para que no maúllen. No hace falta llenarlo — con la mitad o menos alcanza.</div>
+      <div><b>Si te vas muchas horas durante el día:</b> Dejales el gallito (dispenser) con alimento seco en el living, para que no se queden sin comer. Si dormís en casa, a la noche también podés usarlo para que no maúllen. No hace falta llenarlo — con la mitad o menos alcanza.</div>
     </div>
     <div class="standing-note" style="background:var(--teal-soft); border-color:#BCD2CB;">💧
       <div><b>Agua:</b> Hay en la cocina y en el cuarto — chequear siempre que esté limpia y disponible.</div>
@@ -758,7 +771,7 @@
       </div>
     </div>
     <div class="standing-note">🌿
-      <div><b>Recordatorio:</b> Dejar la terraza cerrada cuando no estés, y el jardín de invierno siempre abierto.</div>
+      <div><b>Recordatorio:</b> La puerta al jardín de invierno queda siempre abierta. La terraza puede estar abierta mientras estés en casa, pero cerrada siempre que no haya nadie.</div>
     </div>
     <div class="standing-note" style="background:var(--mustard-soft); border-color:#E4CE93;">🐾
       <div><b>Piedras:</b> Limpiar al menos día por medio para que no moleste el olor. Si nadie las limpió ayer, hoy tocan. Se levanta la mugre, se tira en una bolsita, se respira aire limpio.</div>
@@ -900,14 +913,12 @@
           <rect x="2.60" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="5.20" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="7.80" y="-3.40" width="2.60" height="2.60" fill="#3E6C64"/>
-          <rect x="-10.40" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-7.80" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-5.20" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-2.60" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="0.00" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="2.60" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="5.20" y="-0.80" width="2.60" height="2.60" fill="#3E6C64"/>
-          <rect x="-10.40" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-7.80" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-5.20" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
           <rect x="-2.60" y="1.80" width="2.60" height="2.60" fill="#3E6C64"/>
@@ -1157,8 +1168,7 @@ function renderPersonasGate(){
     const btn = document.createElement("button");
     btn.className = "gate-persona";
     btn.disabled = tomado;
-    const av = avatarDe(participantes[pid]);
-    btn.innerHTML = `<span class="gate-persona-av">${av ? `<img src="${av}" alt="">` : escapeHtml(nombreDe(pid).charAt(0).toUpperCase())}</span>
+    btn.innerHTML = `<span class="gate-persona-av">${avatarSVG(participantes[pid])}</span>
       <span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${tomado ? '<span class="gate-persona-tomado">ya entró</span>' : ""}`;
     btn.addEventListener("click", () => {
       if(confirm(`¿Sos ${nombreDe(pid)}? Tu cuenta de Google (${usuario.email}) va a quedar vinculada a ese nombre.`)) reclamar(pid);
@@ -1212,6 +1222,13 @@ function startApp(){
   ["avatarFaceImg","victoryFaceImg"].forEach(id => {
     document.getElementById(id).setAttribute("href", face);
     document.getElementById(id).setAttribute("xlink:href", face);
+  });
+  // Mi muñequito del camino y del festejo: con los colores de mi avatar
+  const combo = comboAvatar(yo ? yo.nombre : participanteNombre);
+  document.querySelectorAll("#avatarMarker rect, #victoryHeroGroup rect").forEach(r => {
+    const f = r.getAttribute("fill");
+    if(f === "#3E6C64") r.setAttribute("fill", combo.camisa);
+    else if(f === "#C79A2E") r.setAttribute("fill", combo.pantalon);
   });
   const base = `index.html?r=${recorridoId}`;
   document.getElementById("appSession").innerHTML = modoAdmin
@@ -1443,7 +1460,7 @@ function elegirQuien(titulo, actual){
     };
     const abrevs = abreviaturas();
     Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b))).forEach(pid =>
-      opcion(pid, `<span class="gate-persona-av" style="background:${colorDe(pid)}; color:#fff;">${circuloDe(pid, abrevs)}</span><span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${pid === actual ? "✓" : ""}`, pid === actual));
+      opcion(pid, `<span class="gate-persona-av">${circuloDe(pid, abrevs)}</span><span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${pid === actual ? "✓" : ""}`, pid === actual));
     opcion("", `<span class="gate-persona-av">✕</span><span class="gate-persona-nombre">Nadie (destildar)</span>${actual ? "" : "✓"}`, !actual);
     document.getElementById("elegirCancelar").onclick = () => { overlay.classList.remove("show"); resolve(null); };
     overlay.classList.add("show");
@@ -1492,9 +1509,9 @@ function abreviaturas(){
   });
   return out;
 }
+// Avatar de un participante: cuerpo genérico en sus colores + su cabeza (o la burbuja con sus iniciales)
 function circuloDe(pid, abrevs){
-  const av = avatarDe(participantes[pid] || {});
-  return av ? `<img src="${av}" alt="">` : escapeHtml(abrevs[pid] || nombreDe(pid).charAt(0).toUpperCase());
+  return avatarSVG(participantes[pid] || { nombre: nombreDe(pid) }, abrevs && abrevs[pid]);
 }
 
 function fraccionCamino(pid){ return Math.min(1, puntosDe(pid) / totalPuntosPosibles()); }
@@ -1540,7 +1557,6 @@ function updateJourney(){
       const m = document.createElement("div");
       m.className = "otro-marcador";
       m.title = p.nombre;
-      m.style.background = colorDe(p.pid);
       m.style.left = `calc(${(pt.x - vb.x) / vb.width * 100}% + ${(i - (grupo.length - 1) / 2) * 32}px)`;
       m.style.top = `${(pt.y - vb.y) / vb.height * 100}%`;
       m.innerHTML = circuloDe(p.pid, abrevs);
@@ -1560,7 +1576,7 @@ function renderStandings(){
     const vic = p.victoria === null ? "sin días aún" : `${yaCerro(p.pid) ? "🏁 " : ""}${p.victoria}% de sus días`;
     return `<div class="standing-row${p.pid === participanteId ? " me" : ""}" title="${terminado ? "" : "El % es parcial: el día de hoy todavía no cuenta"}">
       <span class="pos">${i+1}</span>
-      <span class="dot-color" style="background:${colorDe(p.pid)}">${dot}</span>
+      <span class="dot-color">${dot}</span>
       <span class="nombre">${escapeHtml(p.nombre)}${p.pid === participanteId ? "<small>(vos)</small>" : ""}</span>
       <span class="pts">${p.puntos} pts</span>
       <span class="pct">${vic}</span>
@@ -1981,7 +1997,7 @@ async function loadPodioMini(){
     el.innerHTML = '<div class="podio-mini">' + [1,0,2].map(idx => {
       const p = top3[idx];
       if(!p) return "";
-      const avatarHtml = p.avatar ? `<img src="${p.avatar}" alt="${escapeHtml(p.nombre)}">` : escapeHtml(p.nombre.charAt(0).toUpperCase());
+      const avatarHtml = avatarSVG({ nombre: p.nombre, avatar: p.avatar });
       return `<div class="podio-mini-spot ${claseByIdx[idx]}">
         <div class="podio-mini-avatar">${avatarHtml}</div>
         <div class="podio-mini-nombre">${escapeHtml(p.nombre)}</div>
@@ -2025,10 +2041,9 @@ async function renderTuRecorrido(){
       : dia < 1 ? `Arranca el ${fechaParaDia(r.fechaInicio, 0)}`
       : dia > (r.dias || 3) ? "Último día para tildar lo que falte"
       : `Día ${dia} de ${r.dias} · hoy ${fechaParaDia(r.fechaInicio, dia - 1)}`;
-    const av = avatarDe(p);
     const btn = document.createElement("button");
     btn.className = "tu-recorrido";
-    btn.innerHTML = `<span class="tr-av">${av ? `<img src="${av}" alt="">` : escapeHtml((p.nombre || "?").charAt(0).toUpperCase())}</span>
+    btn.innerHTML = `<span class="tr-av">${avatarSVG(p)}</span>
       <span class="tr-texto"><span class="tr-eyebrow">Tu recorrido · ${escapeHtml(p.nombre || "")}</span><b>${escapeHtml(r.nombre || "Recorrido")}</b><span class="tr-detalle">${escapeHtml(detalle)}</span></span>
       <span class="tr-ir">Ir →</span>`;
     btn.addEventListener("click", () => { window.location.href = `index.html?r=${doc.id}`; });

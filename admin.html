@@ -52,7 +52,7 @@
   .add-persona input[type=file]{max-width:100%;}
   .row > div{flex:1;}
   .avatar-preview{display:flex; align-items:center; gap:14px; margin-top:10px;}
-  .avatar-preview img{width:64px; height:64px; border-radius:50%; background:var(--bg); border:2px solid var(--line); image-rendering:pixelated;}
+  .avatar-preview img{width:64px; height:64px; object-fit:contain; image-rendering:pixelated;}
   canvas{display:none;}
   .recorrido-item{border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:12px; background:#FBF9F3;}
   .recorrido-item h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:17px;}
@@ -70,7 +70,9 @@
   .dest-chip{display:inline-flex; align-items:center; gap:5px; margin:0; font-size:13px; font-weight:600; color:var(--ink); background:#fff; border:1.5px solid var(--line); border-radius:100px; padding:4px 10px; cursor:pointer;}
   .persona-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
   .persona-row:last-child{border-bottom:none;}
-  .persona-row img, .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
+  .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
+  .persona-row .persona-av{height:44px; flex:none; display:block;}
+  .persona-row svg.av{height:100%; width:auto; display:block; overflow:visible;}
   .persona-row .sin-foto{display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--ink-soft);}
   .persona-row .info{flex:1 1 150px; min-width:150px;}
   .persona-row .info small{display:block; color:var(--ink-soft); font-size:12px;}
@@ -96,6 +98,7 @@
 
 <div class="wrap">
   <div id="gate" class="card">
+    <div style="text-align:center; margin-bottom:6px;"><svg class="icono-caras" style="width:84px; height:40px; flex:none; overflow:visible;" viewBox="0 1.2 16 7.6" shape-rendering="crispEdges" aria-hidden="true"><g transform="rotate(-10 4.1 5.5)"><rect x="0.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="3.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="5.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/></g><g transform="rotate(10 11.9 5.5)"><rect x="8.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="11.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="13.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/></g></svg></div>
     <h2>Panel Admin 🔒</h2>
     <p style="font-size:14px; color:var(--ink-soft); margin:0;" id="gateMsg">Entrá con tu cuenta de Google de admin.</p>
     <button class="btn btn-google" id="loginBtn"><svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar con Google</button>
@@ -104,7 +107,7 @@
 
   <div id="panelWrap">
     <a href="index.html" class="btn secondary small" style="display:inline-block; text-decoration:none; margin-bottom:14px;">← Volver al inicio</a>
-    <h1>Panel Admin</h1>
+    <h1 style="display:flex; align-items:center; gap:10px;"><svg class="icono-caras" style="width:46px; height:22px; flex:none; overflow:visible;" viewBox="0 1.2 16 7.6" shape-rendering="crispEdges" aria-hidden="true"><g transform="rotate(-10 4.1 5.5)"><rect x="0.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="3.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="5.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/></g><g transform="rotate(10 11.9 5.5)"><rect x="8.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="11.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="13.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/></g></svg>Panel Admin</h1>
     <p class="sub">Michis en Casa — gestión de recorridos</p>
     <div class="session" id="session"></div>
 
@@ -124,6 +127,7 @@
       </div>
       <label>Personas que cuidan (poné el nombre con el que se reconocen, ej. "Pame" o "Lauti": al entrar, cada uno lo elige de la lista)</label>
       <div id="fPersonas"></div>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:6px 0 0;">📷 La foto es opcional. Se encuadra sola en la cara, se le quita el fondo y se pixela. Sirve cualquier foto donde se vea bien la cara.</p>
       <button class="btn small secondary" id="fAgregarPersona" style="margin-top:8px;">+ Agregar persona</button>
       <label>Mensaje pop-up de bienvenida (opcional, lo ve cada persona una vez al entrar)</label>
       <textarea id="fPopup" placeholder="Ej: ¡Gracias por bancarnos estos días! Cualquier cosa nos escribís."></textarea>
@@ -179,31 +183,139 @@ function toast(msg){
   setTimeout(() => t.classList.remove("show"), 2200);
 }
 
-// ===== Pixelado de foto en el navegador (canvas) =====
-function pixelateFileToDataUrl(file, onDone){
-  const img = new Image();
-  img.onload = () => {
-    const side = Math.min(img.width, img.height);
-    const sx = (img.width - side)/2, sy = (img.height - side)/2;
-    const small = document.createElement("canvas");
-    small.width = 22; small.height = 22;
-    const sctx = small.getContext("2d");
-    sctx.imageSmoothingEnabled = true;
-    sctx.drawImage(img, sx, sy, side, side, 0, 0, 22, 22);
+// ===== Foto → avatar: quitar el fondo y pixelar, todo en el navegador (la foto no se sube a ningún lado) =====
+// El fondo se quita con MediaPipe (modelo de Google que detecta pelo, cara, cuerpo y ropa).
+// El modelo (~16 MB) se baja una sola vez la primera vez que se procesa una foto.
+const MEDIAPIPE = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
+const MODELO_SEGMENTACION = "https://storage.googleapis.com/mediapipe-models/image_segmenter/selfie_multiclass_256x256/float32/latest/selfie_multiclass_256x256.tflite";
+let segmentadorPromesa = null;
+function obtenerSegmentador(){
+  if(!segmentadorPromesa){
+    segmentadorPromesa = (async () => {
+      const { FilesetResolver, ImageSegmenter } = await import(MEDIAPIPE + "/vision_bundle.mjs");
+      const archivos = await FilesetResolver.forVisionTasks(MEDIAPIPE + "/wasm");
+      return ImageSegmenter.createFromOptions(archivos, {
+        baseOptions: { modelAssetPath: MODELO_SEGMENTACION, delegate: "CPU" },
+        runningMode: "IMAGE",
+        outputConfidenceMasks: true,
+        outputCategoryMask: false
+      });
+    })().catch(e => { segmentadorPromesa = null; throw e; });
+  }
+  return segmentadorPromesa;
+}
 
-    const canvas = document.createElement("canvas");
-    canvas.width = 240; canvas.height = 240;
-    const ctx = canvas.getContext("2d");
-    ctx.imageSmoothingEnabled = false;
-    ctx.drawImage(small, 0, 0, 22, 22, 0, 0, 240, 240);
+function cargarImagen(file){
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = URL.createObjectURL(file);
+  });
+}
+
+// Si la imagen ya trae fondo transparente (ej. un avatar hecho con IA), no hace falta quitarlo
+function yaTieneTransparencia(ctx, lado){
+  const d = ctx.getImageData(0, 0, lado, lado).data;
+  let transparentes = 0;
+  for(let i = 3; i < d.length; i += 4 * 7) if(d[i] < 200) transparentes++;
+  return transparentes > (d.length / (4 * 7)) * 0.05;
+}
+
+async function quitarFondo(canvas){
+  const lado = canvas.width;
+  const ctx = canvas.getContext("2d");
+  if(yaTieneTransparencia(ctx, lado)) return "ya-transparente";
+  const segmentador = await obtenerSegmentador();
+  const resultado = segmentador.segment(canvas);
+  // Clases: 0 fondo, 1 pelo, 2 piel del cuerpo, 3 piel de la cara, 4 ropa, 5 otros.
+  // Nos quedamos solo con la cabeza (pelo + cara): el cuerpo lo pone el avatar genérico.
+  const pelo = resultado.confidenceMasks[1].getAsFloat32Array(), cara = resultado.confidenceMasks[3].getAsFloat32Array();
+  const w = resultado.confidenceMasks[1].width, h = resultado.confidenceMasks[1].height;
+  const datos = ctx.getImageData(0, 0, lado, lado);
+  for(let y = 0; y < lado; y++){
+    for(let x = 0; x < lado; x++){
+      const i = Math.min(h - 1, Math.floor(y * h / lado)) * w + Math.min(w - 1, Math.floor(x * w / lado));
+      const persona = Math.min(1, Math.max(0, (pelo[i] + cara[i] - 0.35) / 0.3));   // borde suave
+      datos.data[(y * lado + x) * 4 + 3] *= persona;
+    }
+  }
+  ctx.putImageData(datos, 0, 0);
+  resultado.close && resultado.close();
+  return "ok";
+}
+
+// Busca la cabeza (pelo + cara) y devuelve un cuadrado alrededor, en coordenadas de la imagen original
+async function encuadreDeLaCara(img){
+  const side = Math.min(img.width, img.height);
+  const sx = (img.width - side) / 2, sy = (img.height - side) / 2;
+  const c = document.createElement("canvas");
+  c.width = c.height = 256;
+  c.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
+  if(yaTieneTransparencia(c.getContext("2d"), 256)) return null;
+  const resultado = (await obtenerSegmentador()).segment(c);
+  const pelo = resultado.confidenceMasks[1], cara = resultado.confidenceMasks[3];
+  const w = cara.width, h = cara.height, pp = pelo.getAsFloat32Array(), pc = cara.getAsFloat32Array();
+  let x0 = w, y0 = h, x1 = -1, y1 = -1;
+  for(let y = 0; y < h; y++) for(let x = 0; x < w; x++){
+    if(pp[y * w + x] + pc[y * w + x] > 0.5){ if(x < x0) x0 = x; if(x > x1) x1 = x; if(y < y0) y0 = y; if(y > y1) y1 = y; }
+  }
+  resultado.close && resultado.close();
+  if(x1 < 0 || (x1 - x0) * (y1 - y0) < w * h * 0.01) return null;   // no encontró una cara clara
+  const escala = side / w;
+  const cx = sx + (x0 + x1) / 2 * escala, cy = sy + (y0 + y1) / 2 * escala;
+  let lado = Math.max(x1 - x0, y1 - y0) * escala * 1.12;               // la cabeza llena el cuadro
+  lado = Math.min(lado, img.width, img.height);
+  const ox = Math.min(Math.max(cx - lado / 2, 0), img.width - lado);
+  const oy = Math.min(Math.max(cy - lado / 2, 0), img.height - lado);
+  return { x: ox, y: oy, lado };
+}
+
+async function fotoAAvatar(file){
+  const img = await cargarImagen(file);
+  let recorte = null;
+  try{ recorte = await encuadreDeLaCara(img); }
+  catch(e){ console.warn("No se pudo ubicar la cara", e); }
+  const side = recorte ? recorte.lado : Math.min(img.width, img.height);
+  const sx = recorte ? recorte.x : (img.width - side) / 2, sy = recorte ? recorte.y : (img.height - side) / 2;
+  const base = document.createElement("canvas");
+  base.width = base.height = 256;
+  base.getContext("2d").drawImage(img, sx, sy, side, side, 0, 0, 256, 256);
+  let fondo = "ok";
+  try{ fondo = await quitarFondo(base); }
+  catch(e){ console.warn("No se pudo quitar el fondo", e); fondo = "error"; }
+
+  // Pixelar a 22x22 y agrandar sin suavizado; los píxeles quedan opacos o transparentes (sin medias tintas)
+  const small = document.createElement("canvas");
+  small.width = small.height = 22;
+  const sctx = small.getContext("2d");
+  sctx.imageSmoothingEnabled = true;
+  sctx.drawImage(base, 0, 0, 256, 256, 0, 0, 22, 22);
+  const px = sctx.getImageData(0, 0, 22, 22);
+  for(let i = 3; i < px.data.length; i += 4) px.data[i] = px.data[i] >= 110 ? 255 : 0;
+  sctx.putImageData(px, 0, 0);
+  const canvas = document.createElement("canvas");
+  canvas.width = canvas.height = 240;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(small, 0, 0, 22, 22, 0, 0, 240, 240);
+  if(fondo === "error"){
+    // Sin fondo quitado: se recorta en círculo como antes
     ctx.globalCompositeOperation = "destination-in";
-    ctx.beginPath();
-    ctx.arc(120,120,120,0,Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(120, 120, 120, 0, Math.PI * 2); ctx.fill();
     ctx.globalCompositeOperation = "source-over";
-    onDone(canvas.toDataURL("image/png"));
-  };
-  img.src = URL.createObjectURL(file);
+  }
+  return { dataUrl: canvas.toDataURL("image/png"), fondo };
+}
+
+// Compatibilidad con el resto del panel: procesa y avisa cómo salió
+function pixelateFileToDataUrl(file, onDone){
+  toast("Procesando la foto (quitando el fondo)…");
+  fotoAAvatar(file).then(({ dataUrl, fondo }) => {
+    if(fondo === "error") toast("No se pudo quitar el fondo (¿sin conexión?): se usó la foto con fondo");
+    else toast(fondo === "ya-transparente" ? "La imagen ya venía sin fondo: lista" : "Listo: fondo quitado");
+    onDone(dataUrl);
+  }).catch(e => { console.error(e); toast("No se pudo leer la imagen"); });
 }
 function bindFoto(input, preview){
   input.addEventListener("change", e => {
@@ -223,7 +335,7 @@ function agregarFilaPersona(){
   row.innerHTML = `
     <input type="text" placeholder="Nombre o apodo" class="p-nombre">
     <input type="file" accept="image/*" class="p-foto">
-    <img class="p-preview" style="display:none; width:36px; height:36px; border-radius:50%; image-rendering:pixelated;">
+    <img class="p-preview" style="display:none; width:36px; height:36px; object-fit:contain; image-rendering:pixelated;">
     <button class="btn small secondary p-quitar">Quitar</button>`;
   bindFoto(row.querySelector(".p-foto"), row.querySelector(".p-preview"));
   row.querySelector(".p-quitar").addEventListener("click", () => row.remove());
@@ -447,11 +559,10 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
     const puntos = Object.values(tareas).filter(t => t.pid === pid).reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
     const dias = new Set(Object.values(tareas).filter(t => t.pid === pid).map(t => t.dia)).size;
     const victoria = (p.cierre && p.cierre.pct !== undefined) ? p.cierre.pct : calcularVictoria(tareas, pid, r);
-    const av = avatarDe(p);
     const row = document.createElement("div");
     row.className = "persona-row";
     row.innerHTML = `
-      ${av ? `<img src="${av}" alt="">` : `<div class="sin-foto">${escapeHtml((p.nombre||"?").charAt(0).toUpperCase())}</div>`}
+      <span class="persona-av">${avatarSVG(p)}</span>
       <div class="info">${escapeHtml(p.nombre)}
         <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}${victoria === null ? "" : ` · ${p.cierre ? "🏁 " : ""}${victoria}% de sus días`}</small>
       </div>
