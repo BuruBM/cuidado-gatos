@@ -31,15 +31,22 @@
   .topbar{display:flex; align-items:center; gap:12px; font-size:12.5px; color:var(--ink-soft); min-height:36px; margin-bottom:18px;}
   .topbar a{color:var(--ink); font-weight:700; text-decoration:none; font-size:13px;}
   .topbar .der{margin-left:auto; display:flex; gap:12px; align-items:center;}
-  .pill-rec{background:var(--teal); color:#F7F3EA !important; border-radius:100px; padding:6px 12px; font-size:12.5px !important; white-space:nowrap;}
-  html.dark .pill-rec{background:#2F5A53;}
+  .marca-mini{display:flex; align-items:center; gap:7px; font-family:'Fraunces',serif; font-size:15px !important;}
+  .marca-mini .caras{width:36px; height:17px;}
+  .bienvenida{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:14px 14px 12px; margin-bottom:16px; box-shadow:var(--shadow);}
+  .bienvenida p{margin:0 0 12px; font-size:14px; line-height:1.5; color:var(--ink-soft);}
+  .bienvenida p b{color:var(--ink);}
+  .guia-btn{display:flex; align-items:center; gap:10px; background:var(--teal); color:#F7F3EA; border-radius:12px; padding:10px 14px; text-decoration:none;}
+  .guia-btn span:first-child{flex:1; font-size:15px;}
+  .guia-btn small{display:block; font-size:12.5px; opacity:.85; margin-top:1px;}
+  .guia-btn .flecha{flex:none; background:#F7F3EA; color:var(--teal); border-radius:50%; width:30px; height:30px; display:flex; align-items:center; justify-content:center; font-weight:700;}
+  html.dark .guia-btn{background:#2F5A53;}
 
-  header{display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  header{display:flex; align-items:center; gap:12px; margin-bottom:12px;}
   .caras{width:46px; height:22px; flex:none; overflow:visible;}
   .eyebrow{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--teal); margin-bottom:3px;}
   html.dark .eyebrow{color:#72AEA3;}
   h1{font-family:'Fraunces',serif; font-weight:700; font-size:25px; line-height:1.1; margin:0; letter-spacing:-.01em;}
-  .intro{color:var(--ink-soft); font-size:14px; line-height:1.5; margin:0 0 20px;}
 
   .resumen{display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:16px; box-shadow:var(--shadow);}
   .resumen b{font-size:14.5px; white-space:nowrap;}
@@ -260,9 +267,13 @@ function render(){
   }
   const fechas = fechasDelRecorrido(recorrido);
   const mio = yo();
-  let h = `<div class="topbar"><a href="index.html">← Inicio</a><span class="der">${botonTema()}<a class="pill-rec" href="index.html?r=${encodeURIComponent(recorridoId)}">✅ Ir al recorrido →</a></span></div>
-    <header>${CARAS}<div><div class="eyebrow">${escapeHtml(recorrido.nombre || "")} · turnos</div><h1>¿Quién cuida a los gatos?</h1></div></header>
-    <p class="intro">Una persona por día. Elegí un día libre, poné tu nombre y, si hace falta, dejá un comentario.</p>`;
+  let h = `<div class="topbar"><a href="index.html" class="marca-mini" title="Les Gates: inicio">${CARAS}<span>Les Gates</span></a><span class="der">${botonTema()}</span></div>
+    <header><div><div class="eyebrow">${escapeHtml(recorrido.nombre || "")} · turnos</div><h1>¿Quién cuida a los gatos?</h1></div></header>
+    <div class="bienvenida">
+      <p>${fechas.length ? `Del <b>${fechaCorta(fechas[0]).toLowerCase()}</b> al <b>${fechaCorta(fechas[fechas.length - 1]).toLowerCase()}</b>, Milo y Zoe necesitan quién los cuide.` : "Milo y Zoe necesitan quién los cuide."}
+      Una persona por día: elegí un día libre y anotate. Si querés, dejá un comentario (horario, si tenés llave…).</p>
+      <a class="guia-btn" href="index.html?r=${encodeURIComponent(recorridoId)}"><span>📖 <b>Guía y tareas</b><small>Qué comen, dónde está cada cosa y qué hacer cada día</small></span><span class="flecha">→</span></a>
+    </div>`;
   if(!fechas.length){
     document.getElementById("app").innerHTML = h + `<div class="vacio">Este recorrido todavía no tiene fecha de inicio.</div>`;
     return;

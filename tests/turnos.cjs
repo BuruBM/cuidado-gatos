@@ -103,7 +103,9 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   check(await sofi.locator(".detalle [data-editar]").count() === 0, "sin cuenta: no puede editar el día de otro");
   await sinDesborde(sofi, "turnos a 360px");
   const altoArriba = await sofi.evaluate(() => document.querySelector(".cal").getBoundingClientRect().top);
-  check(altoArriba < 380, `el calendario empieza arriba en la pantalla (${Math.round(altoArriba)}px)`);
+  check(altoArriba < 520, `el calendario entra en la primera pantalla (${Math.round(altoArriba)}px)`);
+  const bienvenida = await sofi.textContent(".bienvenida");
+  check(bienvenida.includes("necesitan quién los cuide") && await sofi.locator(".bienvenida .guia-btn[href='index.html?r=oct']").count() === 1, "primer contacto: bienvenida con acceso a 📖 Guía y tareas");
   await sofi.screenshot({ path: `${SHOTS}/01-calendario-sin-cuenta.png`, fullPage: true });
   await sofi.click(`.celda[data-fecha="${iso(-1)}"]`);
 
@@ -220,9 +222,25 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   check(tJuli.pid === "juli" && tJuli.uid === juliUid && (await leer("recorridos/oct/participantes/juli")).uid === juliUid, "Juli entra con Google desde turnos y queda anotada");
 
   // Entrar a turnos sirve para el recorrido (una sola entrada)
-  await juli.click(".pill-rec");
+  await juli.click(".guia-btn");
   await juli.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check((await juli.textContent("#appSession")).includes("Juli"), "después de anotarse, 'Ir al recorrido' entra directo como Juli");
+  check((await juli.textContent("#appSession")).includes("Juli"), "después de anotarse, 'Guía y tareas' entra directo como Juli");
+  // En el recorrido: quién viene cada día y cuáles son los suyos (día 1 = ayer)
+  await esperar(juli, () => document.querySelector('.day-tab[data-day="9"].mio'));
+  check((await juli.textContent('.day-tab[data-day="9"] .dt-quien')) === "Vos", "recorrido: su día (el 9) está marcado como Vos");
+  check((await juli.textContent('.day-tab[data-day="1"] .dt-quien')) === "Caro", "recorrido: cada pestaña muestra quién viene (día 1: Caro)");
+  check((await juli.textContent('.day-tab[data-day="5"] .dt-quien')) === "libre", "recorrido: los días sin nadie dicen 'libre'");
+  check((await juli.locator(".day-tab").count()) === 11 && await juli.locator('.day-tab.hoy[data-day="2"]').count() === 1, "recorrido: 11 pestañas con fecha y 'hoy' en el día de hoy");
+  await juli.click('.day-tab[data-day="9"]');
+  check((await juli.textContent("#turno-9")).includes("Es tu día"), "recorrido: arriba de las tareas de su día dice 'Es tu día'");
+  await juli.click('.day-tab[data-day="1"]');
+  check((await juli.textContent("#turno-1")).includes("Viene Caro") && (await juli.textContent("#turno-1")).includes("Llegué 19 h"), "recorrido: en otro día dice quién viene y su comentario");
+  await juli.click('.day-tab[data-day="5"]');
+  check(await juli.locator("#turno-5 a", { hasText: "Anotarme" }).count() === 1, "recorrido: un día libre ofrece anotarse");
+  await juli.click('.day-tab[data-day="9"]');
+  await juli.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, document.getElementById("tareas").getBoundingClientRect().top + window.scrollY - 10); });
+  await juli.waitForTimeout(300);
+  await juli.screenshot({ path: `${SHOTS}/06a-recorrido-dias.png` });
   const nav = await juli.evaluate(() => ({ href: document.getElementById("navTurnos").getAttribute("href"), desborde: document.querySelector(".app-nav").scrollWidth - document.querySelector(".app-nav").clientWidth }));
   check(nav.href === "turnos.html?r=oct", "el recorrido tiene el acceso 🗓️ Turnos a esta página");
   check(nav.desborde <= 0, `los 5 accesos del recorrido entran en una línea a 390px (${nav.desborde}px)`);

@@ -166,22 +166,49 @@
   .notif-status{font-size:13px; margin-top:10px; color:var(--ink-soft);}
 
   .day-tabs{
-    display:flex; gap:8px; margin-bottom:16px; position:sticky; top:12px; z-index:5;
-    background:var(--bg); padding:6px 2px;
+    display:flex; gap:6px; margin-bottom:16px; position:sticky; top:12px; z-index:5;
+    background:var(--bg); padding:6px 2px; overflow-x:auto; scrollbar-width:none;
   }
+  .day-tabs::-webkit-scrollbar{display:none;}
   .day-tab{
-    flex:1; text-align:center; padding:11px 6px; border-radius:14px;
+    flex:1 0 58px; text-align:center; padding:7px 4px 6px; border-radius:14px;
     background:var(--surface); border:1.5px solid var(--line);
     font-weight:600; font-size:14px; cursor:pointer; position:relative;
-    color:var(--ink-soft);
+    color:var(--ink-soft); line-height:1.15;
   }
   .day-tab.active{background:var(--ink); color:#fff; border-color:var(--ink);}
   .day-tab .dot{
-    width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;
-    background:var(--line); vertical-align:middle;
+    width:7px;height:7px;border-radius:50%;display:block;position:absolute;top:6px;right:6px;
+    background:var(--line);
   }
   .day-tab.done .dot{background:var(--success);}
   .day-tab.active .dot{background:#fff;}
+  .day-tab.active.done .dot{background:#93B566;}
+  .day-tab .dt-sem{display:block; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;}
+  .day-tab .dt-num{display:block; font-family:'Fraunces',serif; font-weight:700; font-size:18px; color:var(--ink);}
+  .day-tab .dt-quien{display:block; font-size:11px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft);}
+  .day-tab .dt-quien.libre{color:var(--orange); font-weight:600;}
+  .day-tab.active .dt-num, .day-tab.active .dt-quien{color:#fff;}
+  .day-tab.mio{border:2px solid var(--teal);}
+  .day-tab.mio .dt-quien{color:var(--teal);}
+  .day-tab.mio.active{background:var(--teal); border-color:var(--teal);}
+  .day-tab.mio.active .dt-quien{color:#fff;}
+  .day-tab.hoy .dt-sem{color:var(--orange);}
+  .day-tab.hoy.active .dt-sem{color:#fff;}
+  html.dark .day-tab.mio{border-color:#72AEA3;}
+  html.dark .day-tab.mio .dt-quien{color:#72AEA3;}
+  html.dark .day-tab.mio.active{background:#2F5A53;}
+  html.dark .day-tab.active .dt-num, html.dark .day-tab.active .dt-quien{color:#1B1814;}
+  html.dark .day-tab.mio.active .dt-num, html.dark .day-tab.mio.active .dt-quien{color:#F7F3EA;}
+  .day-turno{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin:0 0 16px; font-size:14px;}
+  .day-turno .av-wrap{height:36px; flex:none;}
+  .day-turno svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .day-turno .dtu-t{flex:1; min-width:0;}
+  .day-turno .dtu-c{display:block; font-size:13px; color:var(--ink-soft); overflow-wrap:anywhere;}
+  .day-turno a{flex:none; font-weight:700; font-size:13px; color:var(--ink); white-space:nowrap;}
+  .day-turno.mio{border:2px solid var(--teal); background:var(--teal-soft);}
+  .day-turno.libre{border:1.5px dashed var(--orange); background:var(--orange-soft);}
+  html.dark .day-turno.mio{border-color:#72AEA3; background:#1E302C;}
 
   .day-panel{display:none;}
   .day-panel.active{display:block;}
@@ -1044,6 +1071,7 @@ let TOTAL_DIAS = 3;
 let appIniciada = false;
 let modoAdmin = false;   // el admin ve y edita todo, sin límite de fechas
 let muroActivo = "recorrido";
+let turnosRec = {};       // "2026-10-10" -> { pid, nombre, comentario } (quién viene cada día)
 
 const DIAS_SEMANA = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 
@@ -1369,7 +1397,14 @@ function startApp(){
     participantes = {};
     snap.forEach(doc => participantes[doc.id] = doc.data());
     updateUI();
+    renderTurnosEnDias();
     if(!primeraCarga) mostrarMensajePersonal();
+  }, e => console.error(e));
+
+  recorridoRef().collection("turnos").onSnapshot(snap => {
+    turnosRec = {};
+    snap.forEach(doc => turnosRec[doc.id] = doc.data());
+    renderTurnosEnDias();
   }, e => console.error(e));
 
   recorridoRef().collection("tareas").onSnapshot(snap => {
@@ -1432,9 +1467,12 @@ function renderDayTabs(){
   const activo = (hoy >= 1 && hoy <= TOTAL_DIAS) ? hoy : 1;
   for(let d=1; d<=TOTAL_DIAS; d++){
     const tab = document.createElement("div");
-    tab.className = "day-tab" + (d===activo ? " active" : "");
+    tab.className = "day-tab" + (d===activo ? " active" : "") + (d===hoy ? " hoy" : "");
     tab.setAttribute("data-day", d);
-    tab.innerHTML = `<span class="dot"></span>Día ${d}`;
+    const f = fechaDeDia(d);
+    tab.innerHTML = f
+      ? `<span class="dot"></span><span class="dt-sem">${d === hoy ? "hoy" : DIAS_SEMANA[f.getDay()].slice(0,3)}</span><span class="dt-num">${f.getDate()}</span><span class="dt-quien"></span>`
+      : `<span class="dot"></span><span class="dt-sem">Día</span><span class="dt-num">${d}</span><span class="dt-quien"></span>`;
     tab.addEventListener("click", () => {
       document.querySelectorAll(".day-tab").forEach(t => t.classList.remove("active"));
       document.querySelectorAll(".day-panel").forEach(p => p.classList.remove("active"));
@@ -1442,6 +1480,39 @@ function renderDayTabs(){
       document.getElementById("panel-"+d).classList.add("active");
     });
     tabsEl.appendChild(tab);
+  }
+  requestAnimationFrame(() => { const a = tabsEl.querySelector(".day-tab.active"); if(a) tabsEl.scrollLeft = a.offsetLeft - tabsEl.clientWidth / 2 + a.clientWidth / 2; });
+}
+function fechaDeDia(d){
+  if(!recorrido.fechaInicio) return null;
+  const [y, m, dd] = recorrido.fechaInicio.split("-").map(Number);
+  return new Date(y, m - 1, dd + d - 1);
+}
+function isoDeDia(d){ return fechasDelRecorrido(recorrido)[d - 1]; }
+
+// Quién viene cada día (según la página de turnos): en la pestaña del día y arriba de sus tareas
+function renderTurnosEnDias(){
+  if(!recorrido.fechaInicio) return;
+  const hoy = hoyISO();
+  for(let d=1; d<=TOTAL_DIAS; d++){
+    const f = isoDeDia(d), t = turnosRec[f];
+    const mio = !!t && !modoAdmin && t.pid === participanteId;
+    const tab = document.querySelector(`.day-tab[data-day="${d}"]`);
+    if(tab){
+      tab.classList.toggle("mio", mio);
+      const q = tab.querySelector(".dt-quien");
+      q.classList.toggle("libre", !t);
+      q.textContent = t ? (mio ? "Vos" : nombreDe(t.pid)) : (f < hoy ? "—" : "libre");
+    }
+    const box = document.getElementById("turno-" + d);
+    if(!box) continue;
+    const linkTurnos = `turnos.html?r=${encodeURIComponent(recorridoId)}`;
+    box.className = "day-turno" + (mio ? " mio" : "") + (t ? "" : " libre");
+    box.innerHTML = t
+      ? `<span class="av-wrap">${avatarSVG(participantes[t.pid] || { nombre: t.nombre })}</span>
+         <span class="dtu-t">${mio ? "<b>Es tu día</b>" : `Viene <b>${escapeHtml(nombreDe(t.pid))}</b>`}${t.comentario ? `<span class="dtu-c">${escapeHtml(t.comentario)}</span>` : ""}</span>
+         <a href="${linkTurnos}">Turnos →</a>`
+      : `<span class="dtu-t">🗓️ ${f < hoy ? "Nadie se anotó este día" : "Nadie se anotó todavía"}</span>${f < hoy || recorridoCerrado() ? "" : `<a href="${linkTurnos}">Anotarme →</a>`}`;
   }
 }
 
@@ -1471,6 +1542,7 @@ function renderDayPanels(){
     });
     panel.innerHTML = `
       <div class="day-date">${fechaParaDia(recorrido.fechaInicio, d-1)}<span class="dia-futuro-nota"> · todavía no llegó</span></div>
+      ${recorrido.fechaInicio ? `<div class="day-turno" id="turno-${d}"></div>` : ""}
       <div class="day-progress"><div class="day-progress-fill" id="fill-${d}"></div></div>
       ${groupsHtml}
     `;
