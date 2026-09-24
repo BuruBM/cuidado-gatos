@@ -7,7 +7,7 @@ fs.rmSync(SHOTS, { recursive: true, force: true }); fs.mkdirSync(SHOTS, { recurs
 const { initializeTestEnvironment } = require("@firebase/rules-unit-testing");
 const { doc, setDoc, getDocs, collection } = require("firebase/firestore");
 
-const tipos = { html:"text/html; charset=utf-8", js:"application/javascript", json:"application/json", png:"image/png" };
+const tipos = { html:"text/html; charset=utf-8", js:"application/javascript", json:"application/json", png:"image/png", css:"text/css" };
 const server = http.createServer((req, res) => {
   const f = path.join(REPO, decodeURIComponent(req.url.split("?")[0]));
   if(!fs.existsSync(f) || fs.statSync(f).isDirectory()){ res.writeHead(404); return res.end(); }
@@ -24,7 +24,7 @@ const check = (cond, msg) => { if(cond) oks++; else fallas++; console.log((cond 
 let browser, env;
 async function pagina(cuenta, opts = {}){
   const ctx = await browser.newContext({ viewport: { width: opts.ancho || 400, height: 860 }, serviceWorkers: "block",
-    userAgent: opts.ua, permissions: opts.permisos || [] });
+    userAgent: opts.ua, permissions: opts.permisos || [], colorScheme: opts.esquema || "light" });
   const page = await ctx.newPage();
   page.nombre = (cuenta && cuenta.name) || "anon";
   page.dialogos = [];
@@ -407,6 +407,43 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await adm.setViewportSize({ width: 360, height: 800 }); await sinDesborde(adm, "admin");
   const filaSofi = await adm.locator(".persona-row", { hasText: "Sofi" }).textContent();
   check(filaSofi.includes(`🏁 ${pctSofi}%`), "admin ve el % congelado de Sofi con 🏁");
+
+  // ================= MODO OSCURO =================
+  console.log("\n== Modo oscuro ==");
+  const homeOsc = await pagina(null, { esquema: "dark" });
+  await homeOsc.goto(BASE + "/index.html");
+  await homeOsc.waitForSelector("#recorridosPasados .recorrido-btn", { timeout: 10000 });
+  check(await homeOsc.evaluate(() => document.documentElement.classList.contains("dark")), "con el celular en modo oscuro, la app arranca oscura (Auto)");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Auto"), "el botón dice '🌓 Auto'");
+  await homeOsc.screenshot({ path: SHOTS + "/10-oscuro-home.png", fullPage: true });
+  await homeOsc.click(".landing-topbar [data-tema]");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Oscuro"), "1er toque: 🌙 Oscuro");
+  await homeOsc.click(".landing-topbar [data-tema]");
+  check(!(await homeOsc.evaluate(() => document.documentElement.classList.contains("dark"))), "2do toque: ☀️ Claro, aunque el celular esté oscuro");
+  await homeOsc.reload(); await homeOsc.waitForSelector(".landing-topbar [data-tema]");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Claro") && !(await homeOsc.evaluate(() => document.documentElement.classList.contains("dark"))), "la elección queda guardada al recargar");
+  await homeOsc.click(".landing-topbar [data-tema]");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Auto") && await homeOsc.evaluate(() => document.documentElement.classList.contains("dark")), "3er toque: vuelve a 🌓 Auto");
+  const pamOsc = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" }, { esquema: "dark" });
+  await pamOsc.goto(urlDe()); await pamOsc.waitForSelector("#gateLoginBtn", { state:"visible" });
+  await pamOsc.screenshot({ path: SHOTS + "/11-oscuro-entrada.png" });
+  await login(pamOsc); await pamOsc.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  await pamOsc.waitForTimeout(800); await cerrarModales(pamOsc);
+  await pamOsc.evaluate(() => { document.querySelectorAll("#guia details")[0].open = true; window.scrollTo(0, 0); });
+  await pamOsc.screenshot({ path: SHOTS + "/12-oscuro-recorrido.png", fullPage: true });
+  await pamOsc.evaluate(() => showVictory(mensajeCierre(86)));
+  await pamOsc.waitForTimeout(900);
+  await pamOsc.screenshot({ path: SHOTS + "/13-oscuro-cierre.png" });
+  const lbOsc = await pagina(null, { esquema: "dark" });
+  await lbOsc.goto(BASE + "/leaderboard.html"); await lbOsc.waitForSelector(".fila");
+  await lbOsc.screenshot({ path: SHOTS + "/14-oscuro-ranking.png", fullPage: true });
+  const admOsc = await pagina({ sub:"admin", email:"bm.blancom@gmail.com", email_verified:true, name:"Admin" }, { esquema: "dark" });
+  await admOsc.goto(BASE + "/admin.html"); await admOsc.waitForSelector("#loginBtn"); await login(admOsc);
+  await admOsc.waitForSelector(".persona-row", { timeout: 10000 });
+  const nombresCortados = await admOsc.$$eval(".persona-row .info", els => els.filter(e => e.getBoundingClientRect().width < 120).length);
+  check(nombresCortados === 0, "admin: los nombres de las personas no se parten letra por letra");
+  await admOsc.screenshot({ path: SHOTS + "/15-oscuro-admin.png", fullPage: true });
+  check(true, "capturas en modo oscuro de home, entrada, recorrido, cierre, ranking y admin");
 
   check(errores.length === 0, "sin errores de JavaScript en ninguna página" + (errores.length ? ":\n   " + errores.join("\n   ") : ""));
   console.log(`\n${oks} OK, ${fallas} FALLAS`);

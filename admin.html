@@ -46,7 +46,8 @@
   .btn:disabled{opacity:0.4; cursor:default;}
   .row{display:flex; gap:12px; flex-wrap:wrap;}
   .row > div{min-width:130px;}
-  .recorrido-item, .card{overflow-wrap:anywhere;}
+  .recorrido-item, .card{overflow-wrap:break-word;}
+  .recorrido-item .link-box input{overflow:hidden; text-overflow:ellipsis;}
   .persona-row{flex-wrap:wrap;}
   .add-persona input[type=file]{max-width:100%;}
   .row > div{flex:1;}
@@ -71,9 +72,9 @@
   .persona-row:last-child{border-bottom:none;}
   .persona-row img, .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
   .persona-row .sin-foto{display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--ink-soft);}
-  .persona-row .info{flex:1; min-width:0;}
+  .persona-row .info{flex:1 1 150px; min-width:150px;}
   .persona-row .info small{display:block; color:var(--ink-soft); font-size:12px;}
-  .persona-row .acciones{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;}
+  .persona-row .acciones{display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; margin-left:auto;}
   .personas-box{margin-top:12px; border-top:1px solid var(--line); padding-top:10px;}
   .personas-box h4{margin:0 0 4px; font-size:13px; text-transform:uppercase; letter-spacing:0.05em; color:var(--ink-soft);}
   .add-persona{display:flex; gap:8px; align-items:center; margin-top:10px; flex-wrap:wrap;}
@@ -89,6 +90,7 @@
   .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:100px; font-size:13.5px; opacity:0; transition:opacity .3s ease; pointer-events:none;}
   .toast.show{opacity:1;}
 </style>
+<link rel="stylesheet" href="tema-oscuro.css">
 </head>
 <body>
 
@@ -162,7 +164,7 @@ auth.onAuthStateChanged(user => {
   }
   document.getElementById("gate").style.display = "none";
   document.getElementById("panelWrap").style.display = "block";
-  document.getElementById("session").innerHTML = `Conectada como ${escapeHtml(user.email)} · <button id="logoutBtn">Salir</button>`;
+  document.getElementById("session").innerHTML = `Conectada como ${escapeHtml(user.email)} · <button id="logoutBtn">Salir</button> · ${botonTema()}`;
   document.getElementById("logoutBtn").addEventListener("click", () => auth.signOut().then(() => location.reload()));
   document.getElementById("fFecha").value = hoyISO();
   if(!document.querySelector("#fPersonas .persona-form")) agregarFilaPersona();
