@@ -47,6 +47,15 @@ service cloud.firestore {
         && request.resource.data.mensaje.size() <= 2000;
     }
 
+    function conGoogle() {
+      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
+    }
+
+    // Código personal de un participante (lo genera el admin; nadie más lo puede leer)
+    function codigoDe(rid, pid) {
+      return get(/databases/$(database)/documents/recorridos/$(rid)/codigos/$(pid)).data.codigo;
+    }
+
     function comentarioPropio() {
       return signedIn() && resource.data.get('uid', null) == request.auth.uid;
     }
@@ -60,10 +69,18 @@ service cloud.firestore {
         allow create, delete: if isAdmin();
         allow update: if isAdmin()
           // Vincular tu cuenta de Google a un nombre libre de la lista
-          || (signedIn()
+          || (conGoogle()
               && resource.data.get('uid', null) == null
               && request.resource.data.uid == request.auth.uid
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'reclamado']))
+          // Entrar con el código personal: en el mismo lote se escribe ingresos/{uid} con el código,
+          // que tiene que coincidir con el del participante (vale aunque el nombre ya esté vinculado:
+          // así se puede entrar desde otro celular)
+          || (signedIn()
+              && request.resource.data.uid == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'reclamado'])
+              && getAfter(/databases/$(database)/documents/recorridos/$(rid)/ingresos/$(request.auth.uid)).data.pid == pid
+              && getAfter(/databases/$(database)/documents/recorridos/$(rid)/ingresos/$(request.auth.uid)).data.codigo == codigoDe(rid, pid))
           // Guardar tus propias preferencias (recordatorios, pop-ups vistos)
           // Marcar avisos como vistos: siempre
           || (signedIn()
@@ -88,6 +105,20 @@ service cloud.firestore {
               && tid == string(request.resource.data.dia) + '_' + request.resource.data.key);
         allow update: if isAdmin();
         allow delete: if isAdmin() || (soyParticipante(rid, resource.data.pid) && abierto(rid));
+      }
+
+      // Códigos personales: solo el admin los ve y los cambia
+      match /codigos/{pid} {
+        allow read, write: if isAdmin();
+      }
+
+      // Intento de entrada con código: cada uno escribe el suyo; solo vale si el código es correcto
+      match /ingresos/{uid} {
+        allow create, update: if signedIn()
+          && uid == request.auth.uid
+          && request.resource.data.keys().hasOnly(['pid', 'codigo'])
+          && request.resource.data.codigo == codigoDe(rid, request.resource.data.pid);
+        allow read, delete: if isAdmin();
       }
 
       match /comentarios/{cid} {

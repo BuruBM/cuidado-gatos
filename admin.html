@@ -83,6 +83,9 @@
   .add-persona input[type=text]{flex:1; min-width:140px;}
   .add-persona input[type=file]{font-size:12px; max-width:200px;}
   .vinculado{color:var(--success); font-weight:700;}
+  .codigo-fila{font-size:12.5px; color:var(--ink-soft); margin-top:3px; display:flex; flex-wrap:wrap; gap:4px 10px; align-items:center;}
+  .codigo-num{color:var(--ink); letter-spacing:0.08em; font-size:13.5px;}
+  .link-mini{background:none; border:none; padding:0; font:inherit; font-size:12.5px; color:var(--teal); text-decoration:underline; cursor:pointer;}
   #gate{max-width:360px; margin:80px auto; text-align:center;}
   #panelWrap{display:none;}
   .btn-google{display:flex; align-items:center; justify-content:center; gap:10px; width:100%; background:#fff; color:var(--ink); border:1.5px solid var(--line); margin-top:10px;}
@@ -345,11 +348,25 @@ document.getElementById("fAgregarPersona").addEventListener("click", agregarFila
 
 // El id de cada participante sale del nombre, sin repetir dentro del recorrido
 async function crearParticipante(recorridoId, recorridoNombre, nombre, avatar){
-  const col = db.collection("recorridos").doc(recorridoId).collection("participantes");
+  const ref = db.collection("recorridos").doc(recorridoId);
+  const col = ref.collection("participantes");
   const base = slugify(nombre);
   let id = base, n = 2;
   while((await col.doc(id).get()).exists) id = base + "-" + (n++);
   await col.doc(id).set({ nombre, avatar: avatar || "", recorridoNombre, uid: null, migrado: true, creado: Date.now() });
+  await ref.collection("codigos").doc(id).set({ codigo: generarCodigo() });
+}
+
+// ===== Código personal (para entrar sin Google) =====
+function generarCodigo(){
+  const n = new Uint32Array(1);
+  crypto.getRandomValues(n);
+  return String(100000 + n[0] % 900000);
+}
+function mensajeCodigo(nombre, recorridoId, codigo){
+  return `¡Hola ${nombre}! 🐾 Para cuidar a Milo y Zoe entrá a ${linkDe(recorridoId)}\n` +
+    `Tocá "Entrá con tu código", elegí tu nombre y poné este código: ${codigo}\n` +
+    `(Si preferís, también podés entrar con Google.)`;
 }
 
 // ===== Crear recorrido =====
@@ -531,8 +548,13 @@ async function accionRecorrido(accion, id, r, item){
 
 function escucharRecorrido(recorridoId, r, item){
   const ref = db.collection("recorridos").doc(recorridoId);
-  let participantes = {}, tareas = {};
-  const render = () => renderPersonas(recorridoId, r, item, participantes, tareas);
+  let participantes = {}, tareas = {}, codigos = {};
+  const render = () => renderPersonas(recorridoId, r, item, participantes, tareas, codigos);
+  listeners.push(ref.collection("codigos").onSnapshot(snap => {
+    codigos = {};
+    snap.forEach(doc => codigos[doc.id] = doc.data().codigo);
+    render();
+  }, e => console.error(e)));
   listeners.push(ref.collection("participantes").onSnapshot(snap => {
     participantes = {};
     snap.forEach(doc => participantes[doc.id] = doc.data());
@@ -548,7 +570,7 @@ function escucharRecorrido(recorridoId, r, item){
   }, e => console.error(e)));
 }
 
-function renderPersonas(recorridoId, r, item, participantes, tareas){
+function renderPersonas(recorridoId, r, item, participantes, tareas, codigos){
   const box = item.querySelector(".personas-list");
   const pids = Object.keys(participantes).sort((a,b) => (participantes[a].nombre||"").localeCompare(participantes[b].nombre||""));
   renderDestinatarios(item, pids, participantes);
@@ -564,7 +586,13 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
     row.innerHTML = `
       <span class="persona-av">${avatarSVG(p)}</span>
       <div class="info">${escapeHtml(p.nombre)}
-        <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}${victoria === null ? "" : ` · ${p.cierre ? "🏁 " : ""}${victoria}% de sus días`}</small>
+        <small>${p.uid ? '<span class="vinculado">✓ ya entró</span>' : 'todavía no entró'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}${victoria === null ? "" : ` · ${p.cierre ? "🏁 " : ""}${victoria}% de sus días`}</small>
+        <div class="codigo-fila">${codigos[pid]
+          ? `🔑 Código: <b class="codigo-num">${codigos[pid]}</b>
+             <button class="link-mini" data-p="copiar">Copiar mensaje</button>
+             <a class="link-mini" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(mensajeCodigo(p.nombre, recorridoId, codigos[pid]))}">WhatsApp</a>
+             <button class="link-mini" data-p="nuevo-codigo">Nuevo código</button>`
+          : `<button class="link-mini" data-p="nuevo-codigo">🔑 Generar código para entrar sin Google</button>`}</div>
       </div>
       <div class="acciones">
         <button class="btn small secondary" data-p="nombre">Nombre</button>
@@ -587,9 +615,19 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
       try{ await pref.update({ nombre: nuevo }); toast(`Ahora se llama ${nuevo}`); }
       catch(err){ console.error(err); toast("No se pudo cambiar el nombre"); }
     });
+    const copiar = row.querySelector('[data-p="copiar"]');
+    if(copiar) copiar.addEventListener("click", async () => {
+      try{ await navigator.clipboard.writeText(mensajeCodigo(p.nombre, recorridoId, codigos[pid])); toast("Mensaje copiado: pegalo en WhatsApp"); }
+      catch(err){ prompt("Copiá este mensaje:", mensajeCodigo(p.nombre, recorridoId, codigos[pid])); }
+    });
+    row.querySelector('[data-p="nuevo-codigo"]').addEventListener("click", async () => {
+      if(codigos[pid] && !confirm(`¿Generar un código nuevo para ${p.nombre}? El anterior deja de servir (si ya entró, sigue adentro en su celular).`)) return;
+      try{ await db.collection("recorridos").doc(recorridoId).collection("codigos").doc(pid).set({ codigo: generarCodigo() }); toast("Código nuevo generado"); }
+      catch(err){ console.error(err); toast("No se pudo generar el código"); }
+    });
     const liberar = row.querySelector('[data-p="liberar"]');
     if(liberar) liberar.addEventListener("click", async () => {
-      if(!confirm(`¿Desvincular la cuenta de Google de ${p.nombre}? La próxima persona que entre con ese nombre la va a poder tomar. Sus tareas tildadas se mantienen.`)) return;
+      if(!confirm(`¿Desvincular la cuenta de ${p.nombre}? Se cierra su acceso actual; puede volver a entrar con Google o con su código. Sus tareas tildadas se mantienen.`)) return;
       await pref.update({ uid: null });
       toast("Cuenta desvinculada");
     });
@@ -599,6 +637,7 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
         const tSnap = await db.collection("recorridos").doc(recorridoId).collection("tareas").where("pid","==",pid).get();
         await Promise.all(tSnap.docs.map(d => d.ref.delete()));
         await pref.delete();
+        await db.collection("recorridos").doc(recorridoId).collection("codigos").doc(pid).delete().catch(() => {});
         toast(`${p.nombre} quitado`);
       }catch(err){ console.error(err); toast("No se pudo quitar"); }
     });
@@ -663,7 +702,7 @@ async function eliminarRecorrido(id, nombre){
   try{
     const ref = db.collection("recorridos").doc(id);
     const borrados = [];
-    for(const sub of ["participantes","tareas","comentarios"]){
+    for(const sub of ["participantes","tareas","comentarios","codigos","ingresos"]){
       const snap = await ref.collection(sub).get();
       snap.forEach(doc => borrados.push(doc.ref.delete()));
     }

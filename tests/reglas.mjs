@@ -92,6 +92,35 @@ await t("pasado: admin comenta", assertSucceeds(setDoc(doc(admin,"recorridos/pas
 await t("pasado: admin cambia el nombre de una persona", assertSucceeds(updateDoc(doc(admin,"recorridos/pasado/participantes/lauti"), {nombre:"Lautaro"})));
 await t("global: admin edita un comentario ajeno", (async () => { await setDoc(doc(A,"comentarios/g1"), {uid:"uidA", mensaje:"x"}); await assertSucceeds(updateDoc(doc(admin,"comentarios/g1"), {mensaje:"y"})); })());
 
+// ===== Entrar con código personal (cuenta anónima) =====
+const { writeBatch } = await import("firebase/firestore");
+await env.withSecurityRulesDisabled(async c => {
+  const f = c.firestore();
+  await setDoc(doc(f,"recorridos/cod"), {nombre:"Con código", dias:3, activo:true});
+  await setDoc(doc(f,"recorridos/cod/participantes/ana"), {nombre:"Ana", uid:null});
+  await setDoc(doc(f,"recorridos/cod/participantes/beto"), {nombre:"Beto", uid:null});
+  await setDoc(doc(f,"recorridos/cod/codigos/ana"), {codigo:"482913"});
+  await setDoc(doc(f,"recorridos/cod/codigos/beto"), {codigo:"111222"});
+});
+const anonA = env.authenticatedContext("anonA", { firebase:{ sign_in_provider:"anonymous" } }).firestore();
+const anonB = env.authenticatedContext("anonB", { firebase:{ sign_in_provider:"anonymous" } }).firestore();
+const entrarCon = (db, uid, pid, codigo) => { const b = writeBatch(db); b.set(doc(db,`recorridos/cod/ingresos/${uid}`), {pid, codigo}); b.update(doc(db,`recorridos/cod/participantes/${pid}`), {uid, reclamado:1}); return b.commit(); };
+await t("código: nadie más que el admin lee los códigos", assertFails(getDoc(doc(A,"recorridos/cod/codigos/ana"))));
+await t("código: anon no lee los códigos", assertFails(getDoc(doc(anonA,"recorridos/cod/codigos/ana"))));
+await t("código: admin lee los códigos", assertSucceeds(getDoc(doc(admin,"recorridos/cod/codigos/ana"))));
+await t("código: anónimo sin código no puede tomar un nombre", assertFails(updateDoc(doc(anonA,"recorridos/cod/participantes/ana"), {uid:"anonA", reclamado:1})));
+await t("código: código incorrecto rechazado", assertFails(entrarCon(anonA, "anonA", "ana", "000000")));
+await t("código: código de otra persona rechazado", assertFails(entrarCon(anonA, "anonA", "ana", "111222")));
+await t("código: con el código correcto entra", assertSucceeds(entrarCon(anonA, "anonA", "ana", "482913")));
+await t("código: ya vinculada, tilda su tarea", assertSucceeds(setDoc(doc(anonA,"recorridos/cod/tareas/1_milo_seco_1"), {dia:1, key:"milo_seco_1", pid:"ana", nombre:"Ana", uid:"anonA", creado:1})));
+await t("código: nadie lee los ingresos (el código no queda a la vista)", assertFails(getDoc(doc(anonA,"recorridos/cod/ingresos/anonA"))));
+await t("código: con el mismo código entra desde otro celular", assertSucceeds(entrarCon(anonB, "anonB", "ana", "482913")));
+await t("código: no puede escribir el ingreso de otro uid", assertFails(setDoc(doc(anonA,"recorridos/cod/ingresos/anonB"), {pid:"ana", codigo:"482913"})));
+await t("código: Google sigue pudiendo tomar un nombre libre", assertSucceeds(updateDoc(doc(B,"recorridos/cod/participantes/beto"), {uid:"uidB", reclamado:2})));
+await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(),"recorridos/cod/codigos/ana"), {codigo:"999888"}));
+await t("código: si el admin genera uno nuevo, el viejo deja de servir", assertFails(entrarCon(anonA, "anonA", "ana", "482913")));
+await t("código: el nuevo sí sirve", assertSucceeds(entrarCon(anonA, "anonA", "ana", "999888")));
+
 console.log(`\n${n} pruebas OK`);
 await env.cleanup();
 process.exit(0);

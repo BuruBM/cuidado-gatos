@@ -43,6 +43,9 @@ if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch
 // Tiene que coincidir con la lista de firestore.rules
 const ADMIN_EMAILS = ["bm.blancom@gmail.com", "barbarabmontero@gmail.com"];
 
+// Quien entró con su código personal tiene una sesión anónima (sin mail)
+function esAnonimo(user){ return !!(user && user.isAnonymous); }
+
 function esAdmin(user){
   return !!(user && user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
 }

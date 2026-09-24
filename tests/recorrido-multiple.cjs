@@ -341,7 +341,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   // Admin libera a Juan (se equivocó de cuenta) y Juan vuelve a entrar
   const filaJuan = adm.locator(".persona-row", { hasText: "Juan" });
   await filaJuan.locator('[data-p="liberar"]').click();
-  await adm.waitForFunction(() => [...document.querySelectorAll(".persona-row")].find(r => r.textContent.includes("Juan")).textContent.includes("sin vincular"), null, { timeout: 5000 });
+  await adm.waitForFunction(() => [...document.querySelectorAll(".persona-row")].find(r => r.textContent.includes("Juan")).textContent.includes("todavía no entró"), null, { timeout: 5000 });
   await jua.reload();
   await elegir(jua, "Juan");
   await esperarTarea(jua, 1, "zoe_humedo", "Vos");
@@ -350,10 +350,27 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   // ================= DÍA 2: solo va Sofi =================
   console.log("\n== Día 2: va solo Sofi ==");
   await moverFecha(rid, -1);
-  const sof = await pagina({ sub:"uSof", email:"sofi@x.com", email_verified:true, name:"Sofía Ruiz" });
-  await sof.goto(urlDe()); await sof.waitForSelector("#gateLoginBtn", { state:"visible" }); await login(sof);
-  await elegir(sof, "Sofi");
-  check(sof.dialogos.some(m => m.includes("¿Sos Sofi?")), "Sofía elige 'Sofi'");
+  // Sofi no usa Google: entra con el código que le pasó el admin
+  const codigos = {};
+  await env.withSecurityRulesDisabled(async c => { (await getDocs(collection(c.firestore(), `recorridos/${rid}/codigos`))).forEach(d => codigos[d.id] = d.data().codigo); });
+  check(["pam","lauti","juan","sofi"].every(pid => /^\d{6}$/.test(codigos[pid] || "")), "el admin generó un código de 6 números para cada persona");
+  const filaCodigo = await adm.locator(".persona-row", { hasText: "Sofi" }).textContent();
+  check(filaCodigo.includes(codigos.sofi) && filaCodigo.includes("Copiar mensaje") && filaCodigo.includes("WhatsApp"), "el admin ve el código de Sofi con 'Copiar mensaje' y 'WhatsApp'");
+  const sof = await pagina(null);
+  sof.nombre = "Sofi (código)";
+  await sof.goto(urlDe()); await sof.waitForSelector("#gateLoginBtn", { state:"visible" });
+  await sof.screenshot({ path: SHOTS + "/08-entrada-con-codigo.png" });
+  await sof.click("#gateCodigoBtn");
+  await sof.locator("#gateCodigoPersonas .gate-persona", { hasText: "Sofi" }).click();
+  await sof.fill("#gateCodigoInput", codigos.sofi === "123456" ? "654321" : "123456");
+  await sof.click("#gateCodigoEntrar");
+  await sof.waitForFunction(() => document.getElementById("gateError").textContent.includes("no es correcto"), null, { timeout: 10000 });
+  check(await sof.isHidden("#appWrap"), "con un código equivocado no entra");
+  await sof.screenshot({ path: SHOTS + "/09-codigo-equivocado.png" });
+  await sof.fill("#gateCodigoInput", codigos.sofi);
+  await sof.click("#gateCodigoEntrar");
+  await sof.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  check((await sof.textContent("#appSession")).includes("Sofi"), "Sofi entra con su código, sin Google");
   check((await sof.getAttribute(".day-tab.active", "data-day")) === "2", "Sofi abre directo en el día de hoy (día 2)");
   await sof.waitForSelector("#avisoOverlay.show");
   check((await sof.textContent("#avisoTexto")).includes("Gracias por venir"), "Sofi ve primero la bienvenida…");
@@ -378,6 +395,26 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await sof.click("#victoryClose");
   await sof.evaluate(() => window.scrollTo(0, 0));
   await sof.screenshot({ path: SHOTS + "/03-dia2-sofi-cerro.png" });
+
+  // Sofi entra desde otro celular con el mismo código
+  const sof2 = await pagina(null);
+  await sof2.goto(urlDe()); await sof2.waitForSelector("#gateLoginBtn", { state:"visible" });
+  await sof2.click("#gateCodigoBtn");
+  await sof2.locator("#gateCodigoPersonas .gate-persona", { hasText: "Sofi" }).click();
+  await sof2.fill("#gateCodigoInput", codigos.sofi);
+  await sof2.click("#gateCodigoEntrar");
+  await sof2.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  await esperarTarea(sof2, 2, "milo_seco_1", "Vos");
+  check(true, "con el mismo código entra desde otro celular y ve sus tareas como propias");
+  await sof2.context().close();
+  // En el primer celular la sesión quedó sin vínculo: al recargar pide el código de nuevo
+  await sof.reload();
+  await sof.waitForSelector("#gateCodigoStep", { state:"visible", timeout: 10000 });
+  await sof.locator("#gateCodigoPersonas .gate-persona", { hasText: "Sofi" }).click();
+  await sof.fill("#gateCodigoInput", codigos.sofi);
+  await sof.click("#gateCodigoEntrar");
+  await sof.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  check(true, "vuelve a entrar en el primer celular con su código");
 
   // ================= DÍA 4: terminó (día de gracia) =================
   console.log("\n== Día 4: el recorrido terminó ayer (nadie fue el día 3) ==");
