@@ -263,6 +263,19 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   const nav = await juli.evaluate(() => ({ href: document.getElementById("navTurnos").getAttribute("href"), desborde: document.querySelector(".app-nav").scrollWidth - document.querySelector(".app-nav").clientWidth }));
   check(nav.href === "turnos.html?r=oct", "el recorrido tiene el acceso 🗓️ Turnos a esta página");
   check(nav.desborde <= 0, `los 5 accesos del recorrido entran en una línea a 390px (${nav.desborde}px)`);
+  // Los accesos de arriba bajan a cada sección sin que las pestañas de los días tapen el título
+  for(const [ancla, titulo] of [["#avisos", "#avisos .section-title"], ["#muro", "#muro .section-title"], ["#guia", "#guia"]]){
+    await juli.evaluate(a => { document.documentElement.style.scrollBehavior = "auto"; document.querySelector(`.app-nav a[href="${a}"]`).click(); }, ancla);
+    await juli.waitForTimeout(250);
+    const tapado = await juli.evaluate(sel => {
+      const el = document.querySelector(sel), r = el.getBoundingClientRect();
+      const arriba = document.elementFromPoint(r.left + 20, r.top + Math.min(10, r.height / 2));
+      return !(el.contains(arriba) || arriba === el);
+    }, titulo);
+    check(!tapado, `el acceso ${ancla} baja a la sección sin que los días tapen el título`);
+  }
+  const fotos = await juli.evaluate(async () => { const imgs = [...document.querySelectorAll('img[src^="fotos/"]')]; imgs.forEach(i => i.loading = "eager"); await Promise.all(imgs.map(i => i.decode().catch(() => null))); return imgs.map(i => i.naturalWidth); });
+  check(fotos.length === 3 && fotos.every(w => w > 0), `las fotos de la guía y la home cargan desde archivos aparte (${fotos.join(", ")})`);
   await juli.setViewportSize({ width: 360, height: 800 });
   const desborde360 = await juli.evaluate(() => document.querySelector(".app-nav").scrollWidth - document.querySelector(".app-nav").clientWidth);
   check(desborde360 <= 0, `los 5 accesos entran en una línea a 360px (${desborde360}px)`);
