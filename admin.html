@@ -142,6 +142,8 @@
       <button class="btn small secondary" id="fAgregarPersona" style="margin-top:8px;">+ Agregar persona</button>
       <label>Mensaje pop-up de bienvenida (opcional, lo ve cada persona una vez al entrar)</label>
       <textarea id="fPopup" placeholder="Ej: ¡Gracias por bancarnos estos días! Cualquier cosa nos escribís."></textarea>
+      <label>Bienvenida de la página de turnos (opcional; es lo primero que lee quien abre el link)</label>
+      <textarea id="fBienvenida" placeholder="Si lo dejás vacío: &quot;Del sáb 10 oct al mar 20 oct, Milo y Zoe necesitan quién los cuide. Una persona por día: elegí un día libre y anotate. Si querés, dejá un comentario (horario, si tenés llave…).&quot;"></textarea>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
         <button class="btn secondary" id="borradorBtn">Guardar borrador</button>
         <button class="btn" id="crearBtn">Crear y publicar</button>
@@ -393,6 +395,7 @@ async function crearRecorrido(borrador){
   const dias = parseInt(document.getElementById("fDias").value) || 3;
   const fechaInicio = document.getElementById("fFecha").value;
   const popupGlobal = document.getElementById("fPopup").value.trim();
+  const bienvenidaTurnos = document.getElementById("fBienvenida").value.trim().slice(0, 1000);
   const personas = Array.from(document.querySelectorAll("#fPersonas .persona-form"))
     .map(row => ({ nombre: row.querySelector(".p-nombre").value.trim(), avatar: row.querySelector(".p-foto").dataset.avatar || "" }))
     .filter(p => p.nombre);
@@ -414,6 +417,7 @@ async function crearRecorrido(borrador){
     const docRef = await db.collection("recorridos").add({
       nombre, dias, fechaInicio,
       popupGlobal: popupGlobal || "",
+      bienvenidaTurnos,
       activo: true,
       borrador,
       creado: Date.now()
@@ -425,6 +429,7 @@ async function crearRecorrido(borrador){
       : `Recorrido creado. Link: <a href="${url}" target="_blank">${url}</a>`;
     document.getElementById("fNombre").value = "";
     document.getElementById("fPopup").value = "";
+    document.getElementById("fBienvenida").value = "";
     document.getElementById("fPersonas").innerHTML = "";
     agregarFilaPersona();
     cargarRecorridos();
@@ -498,6 +503,8 @@ async function cargarRecorridos(){
           </div>
           <label>Mensaje pop-up de bienvenida</label>
           <textarea class="e-popup">${escapeHtml(r.popupGlobal||'')}</textarea>
+          <label>Bienvenida de la página de turnos (vacío = el texto de siempre, con las fechas)</label>
+          <textarea class="e-bienvenida" placeholder="Del ${escapeHtml(r.fechaInicio||'…')}, Milo y Zoe necesitan quién los cuide. Una persona por día: elegí un día libre y anotate.">${escapeHtml(r.bienvenidaTurnos||'')}</textarea>
           <button class="btn small" style="margin-top:10px;" data-accion="guardar">Guardar cambios</button>
         </div>
         <div class="personas-box">
@@ -555,7 +562,8 @@ async function accionRecorrido(accion, id, r, item){
         nombre: item.querySelector(".e-nombre").value.trim(),
         dias: parseInt(item.querySelector(".e-dias").value) || 3,
         fechaInicio: item.querySelector(".e-fecha").value,
-        popupGlobal: item.querySelector(".e-popup").value.trim()
+        popupGlobal: item.querySelector(".e-popup").value.trim(),
+        bienvenidaTurnos: item.querySelector(".e-bienvenida").value.trim().slice(0, 1000)
       });
       toast("Cambios guardados");
       cargarRecorridos();
@@ -592,8 +600,8 @@ async function accionRecorrido(accion, id, r, item){
 
 function escucharRecorrido(recorridoId, r, item){
   const ref = db.collection("recorridos").doc(recorridoId);
-  let participantes = {}, tareas = {}, codigos = {};
-  const render = () => renderPersonas(recorridoId, r, item, participantes, tareas, codigos);
+  let participantes = {}, tareas = {}, codigos = {}, turnos = {};
+  const render = () => renderPersonas(recorridoId, r, item, participantes, tareas, codigos, turnos);
   listeners.push(ref.collection("codigos").onSnapshot(snap => {
     codigos = {};
     snap.forEach(doc => codigos[doc.id] = doc.data().codigo);
@@ -608,10 +616,11 @@ function escucharRecorrido(recorridoId, r, item){
     render();
   }, e => console.error(e)));
   listeners.push(ref.collection("turnos").onSnapshot(snap => {
-    const turnos = {};
+    turnos = {};
     snap.forEach(doc => turnos[doc.id] = doc.data());
     const el = item.querySelector(".turnos-cuenta");
     if(el) el.textContent = `🗓️ Turnos: ${turnosCubiertos(r, turnos)} de ${fechasDelRecorrido(r).length} días cubiertos`;
+    render();
   }, e => console.error(e)));
   listeners.push(ref.collection("tareas").onSnapshot(snap => {
     tareas = {};
@@ -620,7 +629,7 @@ function escucharRecorrido(recorridoId, r, item){
   }, e => console.error(e)));
 }
 
-function renderPersonas(recorridoId, r, item, participantes, tareas, codigos){
+function renderPersonas(recorridoId, r, item, participantes, tareas, codigos, turnos){
   const box = item.querySelector(".personas-list");
   const pids = Object.keys(participantes).sort((a,b) => (participantes[a].nombre||"").localeCompare(participantes[b].nombre||""));
   renderDestinatarios(item, pids, participantes);
@@ -630,7 +639,7 @@ function renderPersonas(recorridoId, r, item, participantes, tareas, codigos){
     const p = participantes[pid];
     const puntos = Object.values(tareas).filter(t => t.pid === pid).reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
     const dias = new Set(Object.values(tareas).filter(t => t.pid === pid).map(t => t.dia)).size;
-    const victoria = (p.cierre && p.cierre.pct !== undefined) ? p.cierre.pct : calcularVictoria(tareas, pid, r);
+    const victoria = (p.cierre && p.cierre.pct !== undefined) ? p.cierre.pct : calcularVictoria(tareas, pid, r, undefined, turnos);
     const row = document.createElement("div");
     row.className = "persona-row";
     row.innerHTML = `

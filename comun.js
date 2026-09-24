@@ -156,15 +156,18 @@ function diaDelRecorrido(recorrido){
 }
 
 // % de victoria de una persona: hechas ÷ (hechas + pendientes), solo sobre sus días.
-// - Sus días: los días en que tildó algo, más los días en que nadie tildó nada
-//   (si nadie fue, les resta a todos; si cuidó solo, todos los días son suyos)
+// - Sus días: los días en que tildó algo, los días en que se anotó en turnos, y los días en que
+//   nadie tildó nada ni nadie estaba anotado (si nadie fue, les resta a todos; si cuidó solo,
+//   todos los días son suyos). Un día vacío con alguien anotado le resta solo a quien se anotó.
 // - Hechas: todo lo que tildó (tomas, suplementos y piedras)
 // - Pendientes: tomas de seco que nadie hizo en sus días, y piedras si nadie las limpió
 //   ni ese día ni el anterior (mínimo día por medio)
-// Lo que hizo otra persona no le resta. Los suplementos no hechos no restan.
+// Lo que hizo otra persona no le resta (si alguien te cubrió, ese día no te resta). Los
+// suplementos no hechos no restan.
 // El día en curso todavía no cuenta como pendiente, salvo que la persona haya tocado
 // "Terminé mis días" (hastaDia = hoy): ahí su % se calcula hasta hoy y queda congelado.
-function calcularVictoria(tareas, pid, recorrido, hastaDia){
+// turnos: { "2026-10-10": { pid, ... } } de la página de turnos (opcional)
+function calcularVictoria(tareas, pid, recorrido, hastaDia, turnos){
   const totalDias = recorrido.dias || 3;
   const hoy = diaDelRecorrido(recorrido);
   const terminado = !!recorrido.fechaInicio && hoy > totalDias;
@@ -179,14 +182,18 @@ function calcularVictoria(tareas, pid, recorrido, hastaDia){
     dias.add(d);
     hechas++;
   }
+  const anotado = {};   // día del recorrido -> pid anotado en turnos
+  fechasDelRecorrido(recorrido).forEach((f, i) => { if(turnos && turnos[f]) anotado[i + 1] = turnos[f].pid; });
+  for(const d in anotado) if(anotado[d] === pid) dias.add(Number(d));
   if(dias.size === 0) return null;
-  for(let d = 1; d <= hasta; d++) if(!diasConAlgo.has(d)) dias.add(d);
+  for(let d = 1; d <= hasta; d++) if(!diasConAlgo.has(d) && !anotado[d]) dias.add(d);
   let pendientes = 0;
   dias.forEach(d => {
     if(d > hasta) return;
     TAREAS_OBLIGATORIAS.forEach(k => { if(!tareas[d + "_" + k]) pendientes++; });
     if(d >= 2 && !tareas[d + "_piedras"] && !tareas[(d-1) + "_piedras"]) pendientes++;
   });
+  if(hechas + pendientes === 0) return null;   // todavía no llegó ninguno de sus días
   return Math.round(hechas / (hechas + pendientes) * 100);
 }
 

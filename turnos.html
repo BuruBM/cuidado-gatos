@@ -34,7 +34,7 @@
   .marca-mini{display:flex; align-items:center; gap:7px; font-family:'Fraunces',serif; font-size:15px !important;}
   .marca-mini .caras{width:36px; height:17px;}
   .bienvenida{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:14px 14px 12px; margin-bottom:16px; box-shadow:var(--shadow);}
-  .bienvenida p{margin:0 0 12px; font-size:14px; line-height:1.5; color:var(--ink-soft);}
+  .bienvenida p{white-space:pre-line; margin:0 0 12px; font-size:14px; line-height:1.5; color:var(--ink-soft);}
   .bienvenida p b{color:var(--ink);}
   .guia-btn{display:flex; align-items:center; gap:10px; background:var(--teal); color:#F7F3EA; border-radius:12px; padding:10px 14px; text-decoration:none;}
   .guia-btn span:first-child{flex:1; font-size:15px;}
@@ -270,8 +270,7 @@ function render(){
   let h = `<div class="topbar"><a href="index.html" class="marca-mini" title="Les Gates: inicio">${CARAS}<span>Les Gates</span></a><span class="der">${botonTema()}</span></div>
     <header><div><div class="eyebrow">${escapeHtml(recorrido.nombre || "")} · turnos</div><h1>¿Quién cuida a los gatos?</h1></div></header>
     <div class="bienvenida">
-      <p>${fechas.length ? `Del <b>${fechaCorta(fechas[0]).toLowerCase()}</b> al <b>${fechaCorta(fechas[fechas.length - 1]).toLowerCase()}</b>, Milo y Zoe necesitan quién los cuide.` : "Milo y Zoe necesitan quién los cuide."}
-      Una persona por día: elegí un día libre y anotate. Si querés, dejá un comentario (horario, si tenés llave…).</p>
+      <p>${recorrido.bienvenidaTurnos ? escapeHtml(recorrido.bienvenidaTurnos) : `${fechas.length ? `Del <b>${fechaCorta(fechas[0]).toLowerCase()}</b> al <b>${fechaCorta(fechas[fechas.length - 1]).toLowerCase()}</b>, Milo y Zoe necesitan quién los cuide.` : "Milo y Zoe necesitan quién los cuide."} Una persona por día: elegí un día libre y anotate. Si querés, dejá un comentario (horario, si tenés llave…).`}</p>
       <a class="guia-btn" href="index.html?r=${encodeURIComponent(recorridoId)}"><span>📖 <b>Guía y tareas</b><small>Qué comen, dónde está cada cosa y qué hacer cada día</small></span><span class="flecha">→</span></a>
     </div>`;
   if(!fechas.length){

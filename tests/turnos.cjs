@@ -237,6 +237,25 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   check((await juli.textContent("#turno-1")).includes("Viene Caro") && (await juli.textContent("#turno-1")).includes("Llegué 19 h"), "recorrido: en otro día dice quién viene y su comentario");
   await juli.click('.day-tab[data-day="5"]');
   check(await juli.locator("#turno-5 a", { hasText: "Anotarme" }).count() === 1, "recorrido: un día libre ofrece anotarse");
+  const altoTab = await juli.evaluate(() => document.querySelector('.day-tab[data-day="9"]').getBoundingClientRect().height);
+  check(altoTab <= 58, `recorrido: pestañas de los días compactas (${Math.round(altoTab)}px de alto)`);
+  // Recordatorios: solo en sus días de turnos
+  const nota = await juli.textContent("#notifDiasNota");
+  const [, mJ, dJ] = iso(7).split("-");
+  check(nota.includes("solo en tus días") && nota.includes(`${Number(dJ)}/${Number(mJ)}`), "recordatorios: avisa que llegan solo en sus días de turnos");
+  check(JSON.stringify(await juli.evaluate(() => misFechasDeTurno())) === JSON.stringify([iso(7)]), "recordatorios: sus días son solo el que se anotó");
+  const disparos = await juli.evaluate(async (hoyEsSuDia) => {
+    const orig = window.mostrarNotificacion, avisos = [];
+    window.mostrarNotificacion = async (t, c) => avisos.push(c);
+    Object.defineProperty(window, "Notification", { value: { permission: "granted" }, configurable: true });
+    const hhmm = new Date().toTimeString().slice(0,5);
+    document.getElementById("notif-manana-on").checked = true;
+    document.getElementById("notif-manana-hora").value = hhmm;
+    checkReminders();
+    window.mostrarNotificacion = orig;
+    return avisos.length;
+  });
+  check(disparos === 0, "recordatorios: hoy no es su día de turnos, no le llega el aviso");
   await juli.click('.day-tab[data-day="9"]');
   await juli.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, document.getElementById("tareas").getBoundingClientRect().top + window.scrollY - 10); });
   await juli.waitForTimeout(300);
@@ -320,6 +339,38 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   check((await leer("recorridos/borr")).borrador === false, "Publicar lo saca de borrador");
   await abrirTurnos(otra, "borr");
   check(await otra.locator(".resumen").count() === 1, "publicado: los turnos ya se ven");
+
+  // Bienvenida editable desde el admin
+  await admin.goto(`${BASE}/admin.html`);
+  await admin.waitForSelector(".recorrido-item");
+  const itemOct = admin.locator(".recorrido-item", { hasText: "Cuidado Octubre" });
+  await itemOct.locator('[data-accion="editar"]').click();
+  await itemOct.locator(".e-bienvenida").fill("¡Hola! Nos vamos de viaje 🧳\nAnotate en los días que puedas <3");
+  await itemOct.locator('[data-accion="guardar"]').click();
+  await esperar(admin, () => document.getElementById("toast").textContent.includes("guardados"));
+  await abrirTurnos(otra);
+  const bienv = await otra.textContent(".bienvenida p");
+  check(bienv.includes("Nos vamos de viaje") && bienv.includes("<3") && !bienv.includes("necesitan quién"), "la bienvenida de turnos se edita desde el admin (y se muestra como texto)");
+  check(await otra.evaluate(() => document.querySelector(".bienvenida p").innerText.split("\n").length) === 2, "la bienvenida respeta los saltos de línea");
+
+  // % de victoria con turnos: un día vacío con alguien anotado le resta solo a esa persona
+  const pct = await otra.evaluate(() => {
+    const r = { dias: 3, fechaInicio: "2020-03-01" };
+    const tareas = {};
+    ["milo_seco_1","milo_seco_2","zoe_seco_1","zoe_seco_2","piedras"].forEach(k => tareas["1_" + k] = { dia: 1, key: k, pid: "ana" });
+    const turnosB = { "2020-03-02": { pid: "beto" } };
+    return {
+      anaSin: calcularVictoria(tareas, "ana", r),
+      anaCon: calcularVictoria(tareas, "ana", r, undefined, turnosB),
+      betoSin: calcularVictoria(tareas, "beto", r),
+      betoCon: calcularVictoria(tareas, "beto", r, undefined, turnosB),
+      futuro: calcularVictoria({}, "beto", { dias: 3, fechaInicio: "2999-01-01" }, undefined, { "2999-01-02": { pid: "beto" } })
+    };
+  });
+  check(pct.anaSin === 36 && pct.betoSin === null, `% sin turnos: igual que antes (Ana 36%, Beto sin días) → ${JSON.stringify(pct)}`);
+  check(pct.anaCon === 50, `% con turnos: el día vacío de Beto ya no le resta a Ana (50%) → ${pct.anaCon}`);
+  check(pct.betoCon === 0, `% con turnos: a Beto, anotado y sin tildar nada, le resta su día (0%) → ${pct.betoCon}`);
+  check(pct.futuro === null, "% con turnos: si su día todavía no llegó, no muestra %");
 
   // ===== 7) Modo oscuro =====
   const oscuro = await pagina(null, { nombre:"oscuro", esquema:"dark", ancho:375 });

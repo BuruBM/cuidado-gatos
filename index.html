@@ -171,22 +171,22 @@
   }
   .day-tabs::-webkit-scrollbar{display:none;}
   .day-tab{
-    flex:1 0 58px; text-align:center; padding:7px 4px 6px; border-radius:14px;
+    flex:1 0 50px; text-align:center; padding:5px 3px 4px; border-radius:12px;
     background:var(--surface); border:1.5px solid var(--line);
     font-weight:600; font-size:14px; cursor:pointer; position:relative;
     color:var(--ink-soft); line-height:1.15;
   }
   .day-tab.active{background:var(--ink); color:#fff; border-color:var(--ink);}
   .day-tab .dot{
-    width:7px;height:7px;border-radius:50%;display:block;position:absolute;top:6px;right:6px;
+    width:6px;height:6px;border-radius:50%;display:block;position:absolute;top:5px;right:5px;
     background:var(--line);
   }
   .day-tab.done .dot{background:var(--success);}
   .day-tab.active .dot{background:#fff;}
   .day-tab.active.done .dot{background:#93B566;}
-  .day-tab .dt-sem{display:block; font-size:10.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;}
-  .day-tab .dt-num{display:block; font-family:'Fraunces',serif; font-weight:700; font-size:18px; color:var(--ink);}
-  .day-tab .dt-quien{display:block; font-size:11px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft);}
+  .day-tab .dt-sem{display:block; font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;}
+  .day-tab .dt-num{display:block; font-family:'Fraunces',serif; font-weight:700; font-size:15.5px; color:var(--ink);}
+  .day-tab .dt-quien{display:block; font-size:10.5px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft);}
   .day-tab .dt-quien.libre{color:var(--orange); font-weight:600;}
   .day-tab.active .dt-num, .day-tab.active .dt-quien{color:#fff;}
   .day-tab.mio{border:2px solid var(--teal);}
@@ -838,7 +838,7 @@
 
   <div class="card" id="avisos">
     <h3 class="section-title">🔔 Tus recordatorios</h3>
-    <p class="section-note">Avisos en este dispositivo mientras tengas esta pestaña abierta. Los horarios quedan guardados en tu cuenta.</p>
+    <p class="section-note">Avisos en este dispositivo mientras tengas esta pestaña abierta. Los horarios quedan guardados en tu cuenta.<span id="notifDiasNota"></span></p>
     <div class="notif-grid">
       <div class="notif-item"><label><input type="checkbox" id="notif-manana-on"> Toma de la mañana</label><input type="time" id="notif-manana-hora" value="09:00"></div>
       <div class="notif-item"><label><input type="checkbox" id="notif-noche-on"> Toma de la noche (+ aviso de piedras)</label><input type="time" id="notif-noche-hora" value="20:00"></div>
@@ -1122,7 +1122,7 @@ function diasDe(pid){
 function victoriaDe(pid){
   const cierre = (participantes[pid] || {}).cierre;
   if(cierre && cierre.pct !== undefined) return cierre.pct;
-  return calcularVictoria(tareas, pid, recorrido);
+  return calcularVictoria(tareas, pid, recorrido, undefined, turnosRec);
 }
 function yaCerro(pid){ return !!((participantes[pid] || {}).cierre); }
 function totalPuntosPosibles(){ return TOTAL_DIAS * puntosPosiblesPorDia(); }
@@ -1405,6 +1405,8 @@ function startApp(){
     turnosRec = {};
     snap.forEach(doc => turnosRec[doc.id] = doc.data());
     renderTurnosEnDias();
+    updateUI();   // el % de cada uno depende de quién se anotó
+    renderNotaRecordatorios();
   }, e => console.error(e));
 
   recorridoRef().collection("tareas").onSnapshot(snap => {
@@ -1807,7 +1809,7 @@ function renderCierre(){
 async function terminarMisDias(){
   if(!confirm("¿Terminaste tus días? Vas a ver tu cierre y tu resultado queda guardado. Si volvés y tildás algo, se reabre.")) return;
   const hoy = diaDeHoy();
-  const pct = calcularVictoria(tareas, participanteId, recorrido, hoy >= 1 ? hoy : TOTAL_DIAS);
+  const pct = calcularVictoria(tareas, participanteId, recorrido, hoy >= 1 ? hoy : TOTAL_DIAS, turnosRec);
   try{
     await participanteRef().update({ cierre: { pct, dia: hoy, fecha: Date.now() }, vioCierre: true });
     showVictory(mensajeCierre(pct));
@@ -1890,8 +1892,23 @@ function leerNotifForm(){
   });
   return notif;
 }
+// Si te anotaste en turnos, los recordatorios llegan solo en tus días; si no, todos los días
+function misFechasDeTurno(){
+  if(modoAdmin || !participanteId) return [];
+  return Object.keys(turnosRec).filter(f => turnosRec[f].pid === participanteId).sort();
+}
+function renderNotaRecordatorios(){
+  const el = document.getElementById("notifDiasNota");
+  if(!el) return;
+  const mias = misFechasDeTurno();
+  el.textContent = mias.length
+    ? ` Te llegan solo en tus días de turnos (${mias.map(f => { const [y,m,d] = f.split("-"); return `${Number(d)}/${Number(m)}`; }).join(", ")}).`
+    : " Como no te anotaste en ningún día de turnos, te llegan todos los días.";
+}
 function checkReminders(){
   if(!("Notification" in window) || Notification.permission !== "granted") return;
+  const mias = misFechasDeTurno();
+  if(mias.length && !mias.includes(hoyISO())) return;
   const now = new Date();
   const hhmm = now.toTimeString().slice(0,5);
   const notif = leerNotifForm();
