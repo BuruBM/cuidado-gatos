@@ -45,6 +45,11 @@ window.__login = (c) => auth.signInWithCredential(firebase.auth.GoogleAuthProvid
   return page;
 }
 const login = (page) => page.evaluate(c => window.__login(c), page.cuenta);
+async function elegir(page, nombre){
+  await page.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
+  await page.locator("#gatePersonas .gate-persona", { hasText: nombre }).first().click();
+  await page.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+}
 const cerrarModales = (page) => page.evaluate(() => document.querySelectorAll(".modal-overlay.show").forEach(m => m.classList.remove("show")));
 async function irADia(page, d){ await page.click(`.day-tab[data-day="${d}"]`); }
 async function tildar(page, d, key){ await irADia(page, d); await page.click(`#panel-${d} .task[data-key="${key}"]`); }
@@ -138,37 +143,35 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await pam.screenshot({ path: SHOTS + "/01-entrada.png" });
 
   // Pamela → "Pam"
-  await login(pam); await pam.waitForSelector("#gateNameInput", { state:"visible" });
-  check((await pam.inputValue("#gateNameInput")) === "Pamela", "sugiere el nombre de Google (Pamela)");
-  await pam.click("#gateEnterBtn");
-  await pam.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check(pam.dialogos.some(m => m.includes("¿Sos Pam?")), "Pamela se vincula como Pam (apodo)");
+  await login(pam);
+  await pam.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
+  const botones = await pam.$$eval("#gatePersonas .gate-persona-nombre", els => els.map(e => e.textContent.trim()));
+  check(botones.length === 4 && ["Juan","Lauti","Pam","Sofi"].every(n => botones.some(b => b.startsWith(n))), "'¿Quién sos?' muestra las 4 personas: " + botones.join(", "));
+  check(!(await pam.textContent("#gateSubtitle")).includes("Pamela"), "no asume quién sos por el nombre de Google");
+  await pam.screenshot({ path: SHOTS + "/01b-quien-sos.png" });
+  await elegir(pam, "Pam");
+  check(pam.dialogos.some(m => m.includes("¿Sos Pam?") && m.includes("pame@x.com")), "Pamela elige 'Pam' y confirma con su mail");
   await pam.waitForSelector("#avisoOverlay.show");
   check((await pam.textContent("#avisoTexto")).includes("Gracias por venir"), "Pam ve el mensaje de bienvenida");
   await pam.click("#avisoClose");
 
   // Lautaro → "Lauti"
-  await login(lau); await lau.waitForSelector("#gateNameInput", { state:"visible" });
-  await lau.click("#gateEnterBtn");
-  await lau.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check(lau.dialogos.some(m => m.includes("¿Sos Lauti?")), "Lautaro se vincula como Lauti");
+  await login(lau);
+  await elegir(lau, "Lauti");
+  check(lau.dialogos.some(m => m.includes("¿Sos Lauti?")), "Lautaro elige 'Lauti'");
   await lau.click("#avisoClose");
   const cara = await lau.getAttribute("#avatarFaceImg", "href");
   check(cara && cara.startsWith("data:image/png"), "Lauti usa la foto pixelada que cargó el admin");
 
-  // Juan: sin nombre en Google, prueba con 2 letras
-  await login(jua); await jua.waitForSelector("#gateNameInput", { state:"visible" });
-  check((await jua.inputValue("#gateNameInput")) === "", "Juan no tiene nombre en Google: campo vacío");
-  await jua.fill("#gateNameInput", "Ju"); await jua.click("#gateEnterBtn");
-  check((await jua.textContent("#gateError")).includes("al menos 3 letras"), "pide al menos 3 letras");
-  await jua.fill("#gateNameInput", "Pam"); await jua.click("#gateEnterBtn");
-  check((await jua.textContent("#gateError")).includes("vinculado a otra cuenta"), "no puede tomar el nombre de Pam");
-  await jua.fill("#gateNameInput", "Carlos"); await jua.click("#gateEnterBtn");
-  check((await jua.textContent("#gateError")).includes("No estás en la lista"), "un nombre que no está en la lista no entra");
-  await jua.fill("#gateNameInput", "juan"); await jua.click("#gateEnterBtn");
-  await jua.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  // Juan: el nombre de Pam ya está tomado
+  await login(jua);
+  await jua.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
+  check(await jua.locator("#gatePersonas .gate-persona", { hasText: "Pam" }).isDisabled(), "Juan ve 'Pam' deshabilitado (ya entró)");
+  check(await jua.locator("#gatePersonas .gate-persona", { hasText: "Lauti" }).isDisabled(), "…y 'Lauti' también");
+  check((await jua.textContent("#gateError")).includes("¿No estás en la lista?"), "explica qué hacer si no está en la lista");
+  await elegir(jua, "Juan");
   await jua.click("#avisoClose");
-  check(true, "Juan entra escribiendo 'juan' en minúscula");
+  check(true, "Juan entra eligiendo su nombre");
 
   // Día futuro bloqueado
   await tildar(pam, 2, "milo_seco_1");
@@ -258,7 +261,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   check(!(await leerParticipantes(rid)).lauti.notif, "Lauti no tiene recordatorios (son opcionales)");
 
   // Mismo Google en otro dispositivo entra directo
-  const pam2 = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });
+  const pam2 = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });  // mismo Google
   await pam2.goto(urlDe()); await pam2.waitForSelector("#gateLoginBtn", { state:"visible" }); await login(pam2);
   await pam2.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
   check((await pam2.textContent("#appSession")).includes("Pam"), "Pam en un 2do dispositivo entra directo, sin volver a escribir el nombre");
@@ -281,18 +284,36 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   for(const [pid, nom] of [["pam","Pam"],["lauti","Lauti"],["juan","Juan"]]){
     check(txtPos.includes(`${puntosOraculo(tareas, pid)} pts`), `posiciones: ${nom} tiene ${puntosOraculo(tareas, pid)} pts`);
   }
+  await pam.waitForFunction(() => document.querySelectorAll("#otrosMarcadores .otro-marcador").length === 2, null, { timeout: 5000 });
+  const marcadores = await pam.$$eval("#otrosMarcadores .otro-marcador", els => els.map(e => ({ t: e.textContent.trim(), img: !!e.querySelector("img"), w: e.getBoundingClientRect().width })));
+  check(marcadores.every(m => m.w >= 29), "marcadores de los demás de 30px (" + marcadores.map(m => m.w).join(", ") + ")");
+  check(marcadores.some(m => m.img) && marcadores.some(m => m.t === "J"), "Lauti aparece con su foto y Juan con 'J'");
+  const abrevs = await pam.evaluate(() => {
+    const guardado = participantes;
+    participantes = { a:{nombre:"Pam"}, b:{nombre:"Pedro"}, c:{nombre:"Juan"}, d:{nombre:"Juana"}, e:{nombre:"Sofi"} };
+    const r = abreviaturas(); participantes = guardado; return r;
+  });
+  check(abrevs.a === "Pa" && abrevs.b === "Pe" && abrevs.c === "Jn" && abrevs.d === "Ja" && abrevs.e === "S", "iniciales sin repetir: Pam=Pa, Pedro=Pe, Juan=Jn, Juana=Ja, Sofi=S");
+  const orden = await pam.evaluate(() => {
+    const pos = id => [...document.querySelectorAll("#appWrap *")].indexOf(document.getElementById(id));
+    return pos("dayTabs") < pos("guia") && pos("guia") < pos("avisos") && pos("avisos") < pos("muro");
+  });
+  check(orden, "orden de la página: tareas → guía → recordatorios → muro");
+  check(!(await pam.evaluate(() => [...document.querySelectorAll("#guia details")].some(d => d.open))), "la guía arranca plegada");
+  await pam.click('.app-nav a[href="#muro"]'); await pam.waitForTimeout(1200);
+  check(await pam.evaluate(() => { const r = document.getElementById("muro").getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight - 100; }), "el acceso rápido '💬 Muro' lleva al muro");
+  await pam.click('.app-nav a[href="#tareas"]').catch(() => {}); await pam.evaluate(() => window.scrollTo(0, 0));
   await cerrarModales(pam);
   await pam.evaluate(() => window.scrollTo(0, 0));
   await pam.screenshot({ path: SHOTS + "/02-dia1-pam.png", fullPage: true });
+  await pam.screenshot({ path: SHOTS + "/02b-dia1-pam-arriba.png" });
 
   // Admin libera a Juan (se equivocó de cuenta) y Juan vuelve a entrar
   const filaJuan = adm.locator(".persona-row", { hasText: "Juan" });
   await filaJuan.locator('[data-p="liberar"]').click();
   await adm.waitForFunction(() => [...document.querySelectorAll(".persona-row")].find(r => r.textContent.includes("Juan")).textContent.includes("sin vincular"), null, { timeout: 5000 });
   await jua.reload();
-  await jua.waitForSelector("#gateNameInput", { state:"visible", timeout: 10000 });
-  await jua.fill("#gateNameInput", "Juan"); await jua.click("#gateEnterBtn");
-  await jua.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  await elegir(jua, "Juan");
   await esperarTarea(jua, 1, "zoe_humedo", "Vos");
   check(true, "admin libera a Juan, Juan se vuelve a vincular y conserva sus tareas");
 
@@ -301,10 +322,8 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await moverFecha(rid, -1);
   const sof = await pagina({ sub:"uSof", email:"sofi@x.com", email_verified:true, name:"Sofía Ruiz" });
   await sof.goto(urlDe()); await sof.waitForSelector("#gateLoginBtn", { state:"visible" }); await login(sof);
-  await sof.waitForSelector("#gateNameInput", { state:"visible" });
-  await sof.click("#gateEnterBtn");   // "Sofía" → "Sofi"
-  await sof.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check(sof.dialogos.some(m => m.includes("¿Sos Sofi?")), "Sofía (con tilde) se vincula como Sofi");
+  await elegir(sof, "Sofi");
+  check(sof.dialogos.some(m => m.includes("¿Sos Sofi?")), "Sofía elige 'Sofi'");
   check((await sof.getAttribute(".day-tab.active", "data-day")) === "2", "Sofi abre directo en el día de hoy (día 2)");
   await sof.waitForSelector("#avisoOverlay.show");
   check((await sof.textContent("#avisoTexto")).includes("Gracias por venir"), "Sofi ve primero la bienvenida…");

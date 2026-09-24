@@ -119,7 +119,7 @@
           <input type="date" id="fFecha">
         </div>
       </div>
-      <label>Personas que cuidan (el nombre acepta apodos: "pam" sirve para Pame y Pamela)</label>
+      <label>Personas que cuidan (poné el nombre con el que se reconocen, ej. "Pame" o "Lauti": al entrar, cada uno lo elige de la lista)</label>
       <div id="fPersonas"></div>
       <button class="btn small secondary" id="fAgregarPersona" style="margin-top:8px;">+ Agregar persona</button>
       <label>Mensaje pop-up de bienvenida (opcional, lo ve cada persona una vez al entrar)</label>
@@ -253,7 +253,7 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
   for(let i = 0; i < personas.length; i++){
     for(let j = i + 1; j < personas.length; j++){
       if(nombresCoinciden(personas[i].nombre, personas[j].nombre) &&
-         !confirm(`"${personas[i].nombre}" y "${personas[j].nombre}" se parecen: al entrar, cada uno va a tener que elegir de una lista. ¿Seguir igual?`)) return;
+         !confirm(`"${personas[i].nombre}" y "${personas[j].nombre}" se parecen y se pueden confundir al elegir. ¿Seguir igual?`)) return;
     }
   }
 
@@ -337,7 +337,7 @@ async function cargarRecorridos(){
           <h4>Personas</h4>
           <div class="personas-list">Cargando...</div>
           <div class="add-persona">
-            <input type="text" placeholder="Agregar persona (nombre o apodo)" class="a-nombre">
+            <input type="text" placeholder="Agregar persona (ej. Pame)" class="a-nombre">
             <input type="file" accept="image/*" class="a-foto">
             <button class="btn small" data-accion="agregar">Agregar</button>
           </div>
@@ -391,7 +391,7 @@ async function accionRecorrido(accion, id, r, item){
       if(!nombre){ toast("Escribí un nombre"); return; }
       const existentes = await ref.collection("participantes").get();
       const parecido = existentes.docs.map(d => d.data().nombre).find(n => nombresCoinciden(n, nombre));
-      if(parecido && !confirm(`"${nombre}" se parece a "${parecido}", que ya está en el recorrido. Al entrar, va a tener que elegir de una lista. ¿Agregar igual?`)) return;
+      if(parecido && !confirm(`"${nombre}" se parece a "${parecido}", que ya está en el recorrido, y se pueden confundir al elegir. ¿Agregar igual?`)) return;
       await crearParticipante(id, r.nombre || "", nombre, foto.dataset.avatar || "");
       input.value = ""; foto.value = ""; delete foto.dataset.avatar;
       toast(`${nombre} agregado`);
