@@ -283,7 +283,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await homeSin.waitForSelector("#recorridosActivos .recorrido-btn", { timeout: 10000 });
   const ordenHome = await homeSin.evaluate(() => { const t = [...document.querySelectorAll(".landing-inner > *")]; return t.indexOf(document.getElementById("activosWrap")) < t.indexOf(document.querySelector(".cats-intro")); });
   check(ordenHome, "home sin sesión: 'Recorridos activos' aparece arriba, antes de la foto");
-  check(await homeSin.evaluate(() => { const h = document.querySelector(".landing-marca"); return h.querySelector("img.landing-icono") && Math.round(h.getBoundingClientRect().height) <= 50; }), "home: ícono nuevo a la izquierda del título, en una sola línea");
+  check(await homeSin.evaluate(() => { const h = document.querySelector(".landing-marca"); return h.querySelector(".landing-icono") && Math.round(h.getBoundingClientRect().height) <= 50; }), "home: ícono nuevo a la izquierda del título, en una sola línea");
   await homeSin.screenshot({ path: SHOTS + "/06-home-sin-sesion.png" });
   await homeSin.context().close();
   const homePam = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });
