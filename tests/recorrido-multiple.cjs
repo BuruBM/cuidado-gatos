@@ -108,6 +108,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await adm.waitForSelector("#loginBtn"); await login(adm);
   await adm.waitForSelector("#panelWrap", { state:"visible" });
   check((await adm.inputValue("#fFecha")) === iso(0), "fecha por defecto = hoy en hora local");
+  check(await adm.isVisible('#panelWrap a[href="index.html"]'), "el panel tiene 'Volver al inicio'");
   await adm.fill("#fNombre", "Prueba Octubre");
   await adm.fill("#fDias", "3");
   await adm.fill("#fPopup", "¡Gracias por venir! Cualquier cosa escribinos.");
@@ -284,6 +285,9 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   const ordenHome = await homeSin.evaluate(() => { const t = [...document.querySelectorAll(".landing-inner > *")]; return t.indexOf(document.getElementById("activosWrap")) < t.indexOf(document.querySelector(".cats-intro")); });
   check(ordenHome, "home sin sesión: 'Recorridos activos' aparece arriba, antes de la foto");
   check(await homeSin.evaluate(() => { const h = document.querySelector(".landing-marca"); return h.querySelector(".landing-icono") && Math.round(h.getBoundingClientRect().height) <= 50; }), "home: ícono nuevo a la izquierda del título, en una sola línea");
+  await homeSin.waitForSelector(".podio-mini-spot", { timeout: 10000 });
+  const altoPodio = await homeSin.evaluate(() => Math.round(document.querySelector(".podio-card").getBoundingClientRect().height));
+  check(altoPodio <= 150, "home: el podio ocupa poco alto (" + altoPodio + "px)");
   await homeSin.screenshot({ path: SHOTS + "/06-home-sin-sesion.png" });
   await homeSin.context().close();
   const homePam = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });
