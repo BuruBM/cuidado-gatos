@@ -21,6 +21,22 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(pid)).data.get('uid', null) == request.auth.uid;
     }
 
+    // Solo las 7 tareas reales, en un día que exista dentro del recorrido
+    function tareaValida(rid) {
+      return request.resource.data.keys().hasOnly(['dia', 'key', 'pid', 'nombre', 'uid', 'creado'])
+        && request.resource.data.key in ['milo_seco_1', 'milo_seco_2', 'milo_humedo', 'zoe_seco_1', 'zoe_seco_2', 'zoe_humedo', 'piedras']
+        && request.resource.data.dia is int
+        && request.resource.data.dia >= 1
+        && request.resource.data.dia <= get(/databases/$(database)/documents/recorridos/$(rid)).data.dias;
+    }
+
+    function comentarioValido() {
+      return request.resource.data.uid == request.auth.uid
+        && request.resource.data.mensaje is string
+        && request.resource.data.mensaje.size() > 0
+        && request.resource.data.mensaje.size() <= 2000;
+    }
+
     function comentarioPropio() {
       return signedIn() && resource.data.get('uid', null) == request.auth.uid;
     }
@@ -50,6 +66,7 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isAdmin()
           || (soyParticipante(rid, request.resource.data.pid)
+              && tareaValida(rid)
               && request.resource.data.uid == request.auth.uid
               && tid == string(request.resource.data.dia) + '_' + request.resource.data.key);
         allow update: if isAdmin();
@@ -58,8 +75,8 @@ service cloud.firestore {
 
       match /comentarios/{cid} {
         allow read: if true;
-        allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-        allow update: if comentarioPropio() && request.resource.data.uid == request.auth.uid;
+        allow create: if signedIn() && comentarioValido();
+        allow update: if comentarioPropio() && comentarioValido();
         allow delete: if isAdmin() || comentarioPropio();
       }
     }
@@ -67,8 +84,8 @@ service cloud.firestore {
     // Muro global
     match /comentarios/{cid} {
       allow read: if true;
-      allow create: if signedIn() && request.resource.data.uid == request.auth.uid;
-      allow update: if comentarioPropio() && request.resource.data.uid == request.auth.uid;
+      allow create: if signedIn() && comentarioValido();
+      allow update: if comentarioPropio() && comentarioValido();
       allow delete: if isAdmin() || comentarioPropio();
     }
 

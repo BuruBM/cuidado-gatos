@@ -164,7 +164,7 @@ auth.onAuthStateChanged(user => {
   document.getElementById("panelWrap").style.display = "block";
   document.getElementById("session").innerHTML = `Conectada como ${escapeHtml(user.email)} · <button id="logoutBtn">Salir</button>`;
   document.getElementById("logoutBtn").addEventListener("click", () => auth.signOut().then(() => location.reload()));
-  document.getElementById("fFecha").value = new Date().toISOString().slice(0,10);
+  document.getElementById("fFecha").value = hoyISO();
   if(!document.querySelector("#fPersonas .persona-form")) agregarFilaPersona();
   cargarRecorridos();
 });
@@ -250,6 +250,12 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
   if(!nombre){ toast("Ponele un nombre al recorrido"); return; }
   if(!fechaInicio){ toast("Elegí la fecha de inicio"); return; }
   if(personas.length === 0){ toast("Agregá al menos una persona"); return; }
+  for(let i = 0; i < personas.length; i++){
+    for(let j = i + 1; j < personas.length; j++){
+      if(nombresCoinciden(personas[i].nombre, personas[j].nombre) &&
+         !confirm(`"${personas[i].nombre}" y "${personas[j].nombre}" se parecen: al entrar, cada uno va a tener que elegir de una lista. ¿Seguir igual?`)) return;
+    }
+  }
 
   const btn = document.getElementById("crearBtn");
   btn.disabled = true; btn.textContent = "Creando...";
@@ -383,6 +389,9 @@ async function accionRecorrido(accion, id, r, item){
       const foto = item.querySelector(".a-foto");
       const nombre = input.value.trim();
       if(!nombre){ toast("Escribí un nombre"); return; }
+      const existentes = await ref.collection("participantes").get();
+      const parecido = existentes.docs.map(d => d.data().nombre).find(n => nombresCoinciden(n, nombre));
+      if(parecido && !confirm(`"${nombre}" se parece a "${parecido}", que ya está en el recorrido. Al entrar, va a tener que elegir de una lista. ¿Agregar igual?`)) return;
       await crearParticipante(id, r.nombre || "", nombre, foto.dataset.avatar || "");
       input.value = ""; foto.value = ""; delete foto.dataset.avatar;
       toast(`${nombre} agregado`);
