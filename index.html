@@ -373,8 +373,10 @@
 
   /* ===== Página del recorrido: accesos rápidos y guía plegable ===== */
   html{scroll-behavior:smooth;}
-  .app-nav{display:flex; flex-wrap:wrap; gap:6px; margin-top:14px;}
-  .app-nav a{font-size:13px; font-weight:700; color:var(--ink); text-decoration:none; background:var(--surface); border:1.5px solid var(--line); border-radius:100px; padding:6px 12px;}
+  .app-nav{display:flex; flex-wrap:nowrap; gap:5px; margin-top:14px; overflow-x:auto; scrollbar-width:none;}
+  .app-nav::-webkit-scrollbar{display:none;}
+  .app-nav a{flex:1 0 auto; text-align:center; white-space:nowrap; font-size:12.5px; font-weight:700; color:var(--ink); text-decoration:none; background:var(--surface); border:1.5px solid var(--line); border-radius:100px; padding:6px 9px;}
+  @media (max-width:350px){ .app-nav{gap:4px;} .app-nav a{font-size:11px; padding:5px 6px;} }
   .tareas-ancla{scroll-margin-top:10px;}
   #guia, #avisos, #muro{scroll-margin-top:12px;}
   .guia{margin:26px 0 18px;}
@@ -563,7 +565,7 @@
     <p class="sub" id="pageSubtitle">Gracias por bancarnos estos días. Acá está todo lo que necesitás, con checklist para cada día.</p>
     <div class="session-line" id="appSession"></div>
     <nav class="app-nav">
-      <a href="#tareas">✅ Tareas</a><a href="#guia">📖 Guía</a><a href="#avisos">🔔 Recordatorios</a><a href="#muro">💬 Muro</a>
+      <a href="#tareas">✅ Tareas</a><a href="#guia">📖 Guía</a><a href="#avisos">🔔 Avisos</a><a href="#muro">💬 Muro</a>
     </nav>
   </header>
 
