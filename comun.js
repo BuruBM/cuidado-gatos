@@ -156,15 +156,18 @@ function diaDelRecorrido(recorrido){
 }
 
 // % de victoria de una persona: hechas ÷ (hechas + pendientes), solo sobre sus días.
-// - Sus días: los días en que tildó algo, más los días en que nadie tildó nada
-//   (si nadie fue, les resta a todos; si cuidó solo, todos los días son suyos)
+// - Sus días: los días en que tildó algo, los días en que se anotó en turnos, y los días en que
+//   nadie tildó nada ni nadie estaba anotado (si nadie fue, les resta a todos; si cuidó solo,
+//   todos los días son suyos). Un día vacío con alguien anotado le resta solo a quien se anotó.
 // - Hechas: todo lo que tildó (tomas, suplementos y piedras)
 // - Pendientes: tomas de seco que nadie hizo en sus días, y piedras si nadie las limpió
 //   ni ese día ni el anterior (mínimo día por medio)
-// Lo que hizo otra persona no le resta. Los suplementos no hechos no restan.
+// Lo que hizo otra persona no le resta (si alguien te cubrió, ese día no te resta). Los
+// suplementos no hechos no restan.
 // El día en curso todavía no cuenta como pendiente, salvo que la persona haya tocado
 // "Terminé mis días" (hastaDia = hoy): ahí su % se calcula hasta hoy y queda congelado.
-function calcularVictoria(tareas, pid, recorrido, hastaDia){
+// turnos: { "2026-10-10": { pid, ... } } de la página de turnos (opcional)
+function calcularVictoria(tareas, pid, recorrido, hastaDia, turnos){
   const totalDias = recorrido.dias || 3;
   const hoy = diaDelRecorrido(recorrido);
   const terminado = !!recorrido.fechaInicio && hoy > totalDias;
@@ -179,14 +182,18 @@ function calcularVictoria(tareas, pid, recorrido, hastaDia){
     dias.add(d);
     hechas++;
   }
+  const anotado = {};   // día del recorrido -> pid anotado en turnos
+  fechasDelRecorrido(recorrido).forEach((f, i) => { if(turnos && turnos[f]) anotado[i + 1] = turnos[f].pid; });
+  for(const d in anotado) if(anotado[d] === pid) dias.add(Number(d));
   if(dias.size === 0) return null;
-  for(let d = 1; d <= hasta; d++) if(!diasConAlgo.has(d)) dias.add(d);
+  for(let d = 1; d <= hasta; d++) if(!diasConAlgo.has(d) && !anotado[d]) dias.add(d);
   let pendientes = 0;
   dias.forEach(d => {
     if(d > hasta) return;
     TAREAS_OBLIGATORIAS.forEach(k => { if(!tareas[d + "_" + k]) pendientes++; });
     if(d >= 2 && !tareas[d + "_piedras"] && !tareas[(d-1) + "_piedras"]) pendientes++;
   });
+  if(hechas + pendientes === 0) return null;   // todavía no llegó ninguno de sus días
   return Math.round(hechas / (hechas + pendientes) * 100);
 }
 
@@ -246,6 +253,45 @@ function avatarSVG(p, texto){
     ? `<image href="${foto}" x="-10" y="-21.2" width="20" height="20" preserveAspectRatio="xMidYMax meet" style="image-rendering:pixelated"/>`
     : `<circle cx="0" cy="-10.6" r="8.4" fill="${combo.camisa}" stroke="#fff" stroke-width="1"/><text x="0" y="-7.2" text-anchor="middle" font-size="${letra.length > 1 ? 8.5 : 10}" font-weight="700" fill="#fff" font-family="Karla, sans-serif">${letra}</text>`;
   return `<svg class="av" viewBox="-11 -21.5 22 36.5" shape-rendering="crispEdges" aria-label="${escapeHtml(p.nombre || "")}">${cuerpoAvatarSVG(combo)}${cabeza}</svg>`;
+}
+
+// ===== Entrar a un recorrido (lo usan el recorrido y la página de turnos) =====
+// Con Google: se vincula la cuenta a un nombre libre de la lista.
+async function vincularConGoogle(recorridoId, pid){
+  await db.collection("recorridos").doc(recorridoId).collection("participantes").doc(pid)
+    .update({ uid: auth.currentUser.uid, reclamado: Date.now() });
+}
+// Con código: sesión anónima + en el mismo lote el intento (ingresos/{uid}) y el vínculo; las reglas
+// solo lo aceptan si el código coincide con el del participante.
+async function vincularConCodigo(recorridoId, pid, codigo){
+  if(!auth.currentUser) await auth.signInAnonymously();
+  const ref = db.collection("recorridos").doc(recorridoId);
+  const uid = auth.currentUser.uid;
+  const lote = db.batch();
+  lote.set(ref.collection("ingresos").doc(uid), { pid, codigo });
+  lote.update(ref.collection("participantes").doc(pid), { uid, reclamado: Date.now() });
+  await lote.commit();
+  return uid;
+}
+function mensajeErrorCodigo(e, nombre){
+  if(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation")
+    return "El ingreso con código todavía no está activado. Avisale a quien te invitó (Firebase → Authentication → Anónimo).";
+  if(e.code === "permission-denied")
+    return "Ese código no es correcto para " + nombre + ". Revisalo o pedile uno nuevo a quien te invitó.";
+  return "No se pudo entrar. Revisá la conexión y probá de nuevo.";
+}
+
+// ===== Turnos: un documento por fecha ("2026-10-10") con quién viene ese día =====
+function fechasDelRecorrido(r){
+  if(!r || !r.fechaInicio) return [];
+  const [y, m, d] = r.fechaInicio.split("-").map(Number);
+  return Array.from({ length: r.dias || 3 }, (_, i) => {
+    const f = new Date(y, m - 1, d + i);
+    return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,"0")}-${String(f.getDate()).padStart(2,"0")}`;
+  });
+}
+function turnosCubiertos(r, turnos){
+  return fechasDelRecorrido(r).filter(f => turnos[f]).length;
 }
 
 // ===== Ranking global: puntos por tarea tildada, sumando todos los recorridos =====

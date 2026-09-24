@@ -166,22 +166,49 @@
   .notif-status{font-size:13px; margin-top:10px; color:var(--ink-soft);}
 
   .day-tabs{
-    display:flex; gap:8px; margin-bottom:16px; position:sticky; top:12px; z-index:5;
-    background:var(--bg); padding:6px 2px;
+    display:flex; gap:6px; margin-bottom:16px; position:sticky; top:12px; z-index:5;
+    background:var(--bg); padding:6px 2px; overflow-x:auto; scrollbar-width:none;
   }
+  .day-tabs::-webkit-scrollbar{display:none;}
   .day-tab{
-    flex:1; text-align:center; padding:11px 6px; border-radius:14px;
+    flex:1 0 50px; text-align:center; padding:5px 3px 4px; border-radius:12px;
     background:var(--surface); border:1.5px solid var(--line);
     font-weight:600; font-size:14px; cursor:pointer; position:relative;
-    color:var(--ink-soft);
+    color:var(--ink-soft); line-height:1.15;
   }
   .day-tab.active{background:var(--ink); color:#fff; border-color:var(--ink);}
   .day-tab .dot{
-    width:8px;height:8px;border-radius:50%;display:inline-block;margin-right:6px;
-    background:var(--line); vertical-align:middle;
+    width:6px;height:6px;border-radius:50%;display:block;position:absolute;top:5px;right:5px;
+    background:var(--line);
   }
   .day-tab.done .dot{background:var(--success);}
   .day-tab.active .dot{background:#fff;}
+  .day-tab.active.done .dot{background:#93B566;}
+  .day-tab .dt-sem{display:block; font-size:9.5px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;}
+  .day-tab .dt-num{display:block; font-family:'Fraunces',serif; font-weight:700; font-size:15.5px; color:var(--ink);}
+  .day-tab .dt-quien{display:block; font-size:10.5px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:var(--ink-soft);}
+  .day-tab .dt-quien.libre{color:var(--orange); font-weight:600;}
+  .day-tab.active .dt-num, .day-tab.active .dt-quien{color:#fff;}
+  .day-tab.mio{border:2px solid var(--teal);}
+  .day-tab.mio .dt-quien{color:var(--teal);}
+  .day-tab.mio.active{background:var(--teal); border-color:var(--teal);}
+  .day-tab.mio.active .dt-quien{color:#fff;}
+  .day-tab.hoy .dt-sem{color:var(--orange);}
+  .day-tab.hoy.active .dt-sem{color:#fff;}
+  html.dark .day-tab.mio{border-color:#72AEA3;}
+  html.dark .day-tab.mio .dt-quien{color:#72AEA3;}
+  html.dark .day-tab.mio.active{background:#2F5A53;}
+  html.dark .day-tab.active .dt-num, html.dark .day-tab.active .dt-quien{color:#1B1814;}
+  html.dark .day-tab.mio.active .dt-num, html.dark .day-tab.mio.active .dt-quien{color:#F7F3EA;}
+  .day-turno{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin:0 0 16px; font-size:14px;}
+  .day-turno .av-wrap{height:36px; flex:none;}
+  .day-turno svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .day-turno .dtu-t{flex:1; min-width:0;}
+  .day-turno .dtu-c{display:block; font-size:13px; color:var(--ink-soft); overflow-wrap:anywhere;}
+  .day-turno a{flex:none; font-weight:700; font-size:13px; color:var(--ink); white-space:nowrap;}
+  .day-turno.mio{border:2px solid var(--teal); background:var(--teal-soft);}
+  .day-turno.libre{border:1.5px dashed var(--orange); background:var(--orange-soft);}
+  html.dark .day-turno.mio{border-color:#72AEA3; background:#1E302C;}
 
   .day-panel{display:none;}
   .day-panel.active{display:block;}
@@ -352,22 +379,29 @@
   details.acc .acc-body ul{margin:0; padding-left:16px;}
 
   .recorridos-grid{display:flex; flex-direction:column; gap:9px;}
-  .recorrido-btn{display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; cursor:pointer; font-family:'Karla',sans-serif; color:var(--ink); box-shadow:var(--shadow);}
-  .recorrido-btn b{display:block; font-size:16px; font-family:'Fraunces',serif; font-weight:600;}
+  .recorrido-btn{display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:10px 14px; cursor:pointer; font-family:'Karla',sans-serif; color:var(--ink); box-shadow:var(--shadow);}
+  .recorrido-btn b{display:block; font-size:15px; font-family:'Fraunces',serif; font-weight:600;}
   .recorrido-btn span{font-size:12.5px; color:var(--ink-soft);}
-  .recorrido-btn::after{content:"→"; flex:none; width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; margin-left:10px;}
+  .recorrido-btn::after{content:"→"; flex:none; width:28px; height:28px; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; margin-left:10px;}
   .recorrido-btn:hover{border-color:var(--teal);}
   .recorrido-btn.pasado{box-shadow:none; background:rgba(255,255,255,0.55);}
   .recorrido-btn.pasado::after{background:#A8A08F;}
 
-  .tu-recorrido{display:flex; align-items:center; gap:14px; width:100%; text-align:left; background:var(--teal); color:#F7F3EA; border:none; border-radius:18px; padding:16px 18px; margin-bottom:10px; cursor:pointer; font-family:'Karla',sans-serif; box-shadow:0 4px 12px rgba(53,95,88,0.25);}
+  .tu-recorrido{display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--teal); color:#F7F3EA; border:none; border-radius:16px; padding:10px 14px; margin-bottom:8px; cursor:pointer; font-family:'Karla',sans-serif; box-shadow:0 4px 12px rgba(53,95,88,0.25);}
   .tu-recorrido .tr-av{width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; overflow:hidden; flex:none;}
   .tu-recorrido .tr-av img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated;}
   .tu-recorrido .tr-texto{flex:1; min-width:0;}
   .tu-recorrido .tr-eyebrow{display:block; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; opacity:0.75;}
-  .tu-recorrido b{display:block; font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin:1px 0 2px;}
-  .tu-recorrido .tr-detalle{font-size:13px; opacity:0.85;}
-  .tu-recorrido .tr-ir{flex:none; background:#F7F3EA; color:var(--teal); border-radius:100px; padding:8px 14px; font-weight:700; font-size:13.5px;}
+  .tu-recorrido b{display:block; font-family:'Fraunces',serif; font-size:16.5px; font-weight:600; margin:1px 0 2px;}
+  .tu-recorrido .tr-detalle{font-size:12.5px; opacity:0.85;}
+  .tu-recorrido .tr-ir{flex:none; background:#F7F3EA; color:var(--teal); border-radius:100px; padding:6px 12px; font-weight:700; font-size:13px;}
+  .turnos-home{display:flex; align-items:center; gap:9px; width:100%; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin-bottom:8px; font-family:'Karla',sans-serif; font-size:13.5px; color:var(--ink); text-decoration:none; box-shadow:var(--shadow);}
+  .turnos-home .th-t{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .turnos-home .th-barra{flex:1; min-width:40px; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:2px;}
+  .turnos-home .th-barra i{height:7px; border-radius:2px; background:var(--orange-soft); border:1px dashed var(--orange);}
+  .turnos-home .th-barra i.ok{background:var(--success); border:1px solid var(--success);}
+  .turnos-home .th-ir{flex:none; font-weight:700; font-size:13px; white-space:nowrap;}
+  html.dark .turnos-home .th-barra i.ok{background:#93B566; border-color:#93B566;}
   html.dark .tu-recorrido{background:#2F5A53;}
   .landing-footer{text-align:center; margin-top:40px; font-size:12px; color:var(--ink-soft);}
   .landing-footer a{color:var(--ink-soft);}
@@ -397,10 +431,12 @@
 
   /* ===== Página del recorrido: accesos rápidos y guía plegable ===== */
   html{scroll-behavior:smooth;}
-  .app-nav{display:flex; flex-wrap:nowrap; gap:5px; margin-top:14px; overflow-x:auto; scrollbar-width:none;}
+  .app-nav{display:flex; flex-wrap:nowrap; gap:4px; margin-top:14px; overflow-x:auto; scrollbar-width:none;}
   .app-nav::-webkit-scrollbar{display:none;}
-  .app-nav a{flex:1 0 auto; text-align:center; white-space:nowrap; font-size:12.5px; font-weight:700; color:var(--ink); text-decoration:none; background:var(--surface); border:1.5px solid var(--line); border-radius:100px; padding:6px 9px;}
-  @media (max-width:350px){ .app-nav{gap:4px;} .app-nav a{font-size:11px; padding:5px 6px;} }
+  .app-nav a{flex:1 0 auto; text-align:center; white-space:nowrap; font-size:12.5px; font-weight:700; color:var(--ink); text-decoration:none; background:var(--surface); border:1.5px solid var(--line); border-radius:100px; padding:6px 7px;}
+  @media (max-width:390px){ .app-nav{gap:3px;} .app-nav a{font-size:11.5px; padding:5px 5px;} }
+  @media (max-width:370px){ .app-nav a{font-size:11px; padding:5px 4px;} }
+  @media (max-width:340px){ .app-nav a{font-size:10px; padding:4px 3px;} }
   .tareas-ancla{scroll-margin-top:10px;}
   #guia, #avisos, #muro{scroll-margin-top:12px;}
   .guia{margin:26px 0 18px;}
@@ -456,7 +492,7 @@
   .standing-row .dot-color:has(svg.av){height:36px !important; min-width:22px;}
   .otro-marcador:has(svg.av){height:46px !important; transform:translate(-50%, -96%) !important; filter:drop-shadow(0 1px 1.5px rgba(43,38,32,0.45));}
   .gate-persona-av:has(svg.av){height:44px !important; min-width:36px;}
-  .tu-recorrido .tr-av:has(svg.av){height:56px !important; min-width:44px;}
+  .tu-recorrido .tr-av:has(svg.av){height:44px !important; min-width:34px;}
   .tu-recorrido .tr-av svg.av{filter:drop-shadow(0 0 0.8px #F7F3EA) drop-shadow(0 0 0.8px #F7F3EA);}
 </style>
 <link rel="stylesheet" href="tema-oscuro.css">
@@ -475,6 +511,7 @@
   </div>
 
   <div id="tuRecorrido" style="display:none;"></div>
+  <div id="turnosHome"></div>
   <div id="activosWrap">
     <h2 class="landing-section-title" style="--sec:var(--teal); margin-top:6px;">Recorridos activos</h2>
     <div class="recorridos-grid" id="recorridosActivos">Cargando...</div>
@@ -619,7 +656,7 @@
     <p class="sub" id="pageSubtitle">Gracias por bancarnos estos días. Acá está todo lo que necesitás, con checklist para cada día.</p>
     <div class="session-line" id="appSession"></div>
     <nav class="app-nav">
-      <a href="#tareas">✅ Tareas</a><a href="#guia">📖 Guía</a><a href="#avisos">🔔 Avisos</a><a href="#muro">💬 Muro</a>
+      <a href="#tareas">✅ Tareas</a><a id="navTurnos" href="turnos.html">🗓️ Turnos</a><a href="#guia">📖 Guía</a><a href="#avisos">🔔 Avisos</a><a href="#muro">💬 Muro</a>
     </nav>
   </header>
 
@@ -801,7 +838,7 @@
 
   <div class="card" id="avisos">
     <h3 class="section-title">🔔 Tus recordatorios</h3>
-    <p class="section-note">Avisos en este dispositivo mientras tengas esta pestaña abierta. Los horarios quedan guardados en tu cuenta.</p>
+    <p class="section-note">Avisos en este dispositivo mientras tengas esta pestaña abierta. Los horarios quedan guardados en tu cuenta.<span id="notifDiasNota"></span></p>
     <div class="notif-grid">
       <div class="notif-item"><label><input type="checkbox" id="notif-manana-on"> Toma de la mañana</label><input type="time" id="notif-manana-hora" value="09:00"></div>
       <div class="notif-item"><label><input type="checkbox" id="notif-noche-on"> Toma de la noche (+ aviso de piedras)</label><input type="time" id="notif-noche-hora" value="20:00"></div>
@@ -1034,6 +1071,7 @@ let TOTAL_DIAS = 3;
 let appIniciada = false;
 let modoAdmin = false;   // el admin ve y edita todo, sin límite de fechas
 let muroActivo = "recorrido";
+let turnosRec = {};       // "2026-10-10" -> { pid, nombre, comentario } (quién viene cada día)
 
 const DIAS_SEMANA = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
 
@@ -1084,7 +1122,7 @@ function diasDe(pid){
 function victoriaDe(pid){
   const cierre = (participantes[pid] || {}).cierre;
   if(cierre && cierre.pct !== undefined) return cierre.pct;
-  return calcularVictoria(tareas, pid, recorrido);
+  return calcularVictoria(tareas, pid, recorrido, undefined, turnosRec);
 }
 function yaCerro(pid){ return !!((participantes[pid] || {}).cierre); }
 function totalPuntosPosibles(){ return TOTAL_DIAS * puntosPosiblesPorDia(); }
@@ -1129,6 +1167,16 @@ async function initGate(){
     if(ingresandoConCodigo) return;   // el ingreso con código sigue solo
     gateError("");
     document.getElementById("gateChips").innerHTML = "";
+    // Borrador: solo el admin lo puede abrir
+    if(recorrido.borrador && !esAdmin(user)){
+      mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido todavía no está publicado. Cuando esté listo, vas a poder entrar desde este mismo link.");
+      document.getElementById("gateLoginStep").style.display = "none";
+      document.getElementById("gateNameStep").style.display = "none";
+      document.getElementById("gateCodigoStep").style.display = "none";
+      document.getElementById("gateSession").innerHTML = user ? `<button id="gateLogout">Salir</button>` : "";
+      if(user) document.getElementById("gateLogout").addEventListener("click", () => auth.signOut());
+      return;
+    }
     if(!user){
       mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido es solo para quienes cuidan a Milo y Zoe. Entrá con Google o con tu código.");
       document.getElementById("gateLoginStep").style.display = "block";
@@ -1203,7 +1251,7 @@ function renderPersonasGate(){
 
 async function reclamar(pid){
   try{
-    await recorridoRef().collection("participantes").doc(pid).update({ uid: usuario.uid, reclamado: Date.now() });
+    await vincularConGoogle(recorridoId, pid);
     participantes[pid].uid = usuario.uid;
     entrar(pid);
   }catch(e){
@@ -1265,24 +1313,15 @@ async function entrarConCodigo(){
   btn.disabled = true;
   ingresandoConCodigo = true;
   try{
-    if(!auth.currentUser) await auth.signInAnonymously();
+    await vincularConCodigo(recorridoId, pidCodigo, codigo);
     usuario = auth.currentUser;
-    const lote = db.batch();
-    lote.set(recorridoRef().collection("ingresos").doc(usuario.uid), { pid: pidCodigo, codigo });
-    lote.update(recorridoRef().collection("participantes").doc(pidCodigo), { uid: usuario.uid, reclamado: Date.now() });
-    await lote.commit();
     participantes[pidCodigo].uid = usuario.uid;
     ingresandoConCodigo = false;
     entrar(pidCodigo);
   }catch(e){
     console.warn(e);
     ingresandoConCodigo = false;
-    if(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation")
-      gateError("El ingreso con código todavía no está activado. Avisale a quien te invitó (Firebase → Authentication → Anónimo).");
-    else if(e.code === "permission-denied")
-      gateError("Ese código no es correcto para " + nombreDe(pidCodigo) + ". Revisalo o pedile uno nuevo a quien te invitó.");
-    else
-      gateError("No se pudo entrar. Revisá la conexión y probá de nuevo.");
+    gateError(mensajeErrorCodigo(e, nombreDe(pidCodigo)));
   }
   btn.disabled = false;
 }
@@ -1334,6 +1373,7 @@ function startApp(){
     else if(f === "#C79A2E") r.setAttribute("fill", combo.pantalon);
   });
   const base = `index.html?r=${recorridoId}`;
+  document.getElementById("navTurnos").href = `turnos.html?r=${recorridoId}`;
   document.getElementById("appSession").innerHTML = modoAdmin
     ? `🔧 <b>Modo admin</b> · <a href="${base}">Ver como participante</a> · <button id="appLogout">Salir</button> · ${botonTema()}`
     : `Entraste como <b>${escapeHtml(participanteNombre)}</b> · <button id="appLogout">Salir</button>` + (esAdmin(usuario) ? ` · <a href="${base}&modo=admin">🔧 Modo admin</a>` : "") + ` · ${botonTema()}`;
@@ -1357,7 +1397,16 @@ function startApp(){
     participantes = {};
     snap.forEach(doc => participantes[doc.id] = doc.data());
     updateUI();
+    renderTurnosEnDias();
     if(!primeraCarga) mostrarMensajePersonal();
+  }, e => console.error(e));
+
+  recorridoRef().collection("turnos").onSnapshot(snap => {
+    turnosRec = {};
+    snap.forEach(doc => turnosRec[doc.id] = doc.data());
+    renderTurnosEnDias();
+    updateUI();   // el % de cada uno depende de quién se anotó
+    renderNotaRecordatorios();
   }, e => console.error(e));
 
   recorridoRef().collection("tareas").onSnapshot(snap => {
@@ -1420,9 +1469,12 @@ function renderDayTabs(){
   const activo = (hoy >= 1 && hoy <= TOTAL_DIAS) ? hoy : 1;
   for(let d=1; d<=TOTAL_DIAS; d++){
     const tab = document.createElement("div");
-    tab.className = "day-tab" + (d===activo ? " active" : "");
+    tab.className = "day-tab" + (d===activo ? " active" : "") + (d===hoy ? " hoy" : "");
     tab.setAttribute("data-day", d);
-    tab.innerHTML = `<span class="dot"></span>Día ${d}`;
+    const f = fechaDeDia(d);
+    tab.innerHTML = f
+      ? `<span class="dot"></span><span class="dt-sem">${d === hoy ? "hoy" : DIAS_SEMANA[f.getDay()].slice(0,3)}</span><span class="dt-num">${f.getDate()}</span><span class="dt-quien"></span>`
+      : `<span class="dot"></span><span class="dt-sem">Día</span><span class="dt-num">${d}</span><span class="dt-quien"></span>`;
     tab.addEventListener("click", () => {
       document.querySelectorAll(".day-tab").forEach(t => t.classList.remove("active"));
       document.querySelectorAll(".day-panel").forEach(p => p.classList.remove("active"));
@@ -1430,6 +1482,39 @@ function renderDayTabs(){
       document.getElementById("panel-"+d).classList.add("active");
     });
     tabsEl.appendChild(tab);
+  }
+  requestAnimationFrame(() => { const a = tabsEl.querySelector(".day-tab.active"); if(a) tabsEl.scrollLeft = a.offsetLeft - tabsEl.clientWidth / 2 + a.clientWidth / 2; });
+}
+function fechaDeDia(d){
+  if(!recorrido.fechaInicio) return null;
+  const [y, m, dd] = recorrido.fechaInicio.split("-").map(Number);
+  return new Date(y, m - 1, dd + d - 1);
+}
+function isoDeDia(d){ return fechasDelRecorrido(recorrido)[d - 1]; }
+
+// Quién viene cada día (según la página de turnos): en la pestaña del día y arriba de sus tareas
+function renderTurnosEnDias(){
+  if(!recorrido.fechaInicio) return;
+  const hoy = hoyISO();
+  for(let d=1; d<=TOTAL_DIAS; d++){
+    const f = isoDeDia(d), t = turnosRec[f];
+    const mio = !!t && !modoAdmin && t.pid === participanteId;
+    const tab = document.querySelector(`.day-tab[data-day="${d}"]`);
+    if(tab){
+      tab.classList.toggle("mio", mio);
+      const q = tab.querySelector(".dt-quien");
+      q.classList.toggle("libre", !t);
+      q.textContent = t ? (mio ? "Vos" : nombreDe(t.pid)) : (f < hoy ? "—" : "libre");
+    }
+    const box = document.getElementById("turno-" + d);
+    if(!box) continue;
+    const linkTurnos = `turnos.html?r=${encodeURIComponent(recorridoId)}`;
+    box.className = "day-turno" + (mio ? " mio" : "") + (t ? "" : " libre");
+    box.innerHTML = t
+      ? `<span class="av-wrap">${avatarSVG(participantes[t.pid] || { nombre: t.nombre })}</span>
+         <span class="dtu-t">${mio ? "<b>Es tu día</b>" : `Viene <b>${escapeHtml(nombreDe(t.pid))}</b>`}${t.comentario ? `<span class="dtu-c">${escapeHtml(t.comentario)}</span>` : ""}</span>
+         <a href="${linkTurnos}">Turnos →</a>`
+      : `<span class="dtu-t">🗓️ ${f < hoy ? "Nadie se anotó este día" : "Nadie se anotó todavía"}</span>${f < hoy || recorridoCerrado() ? "" : `<a href="${linkTurnos}">Anotarme →</a>`}`;
   }
 }
 
@@ -1459,6 +1544,7 @@ function renderDayPanels(){
     });
     panel.innerHTML = `
       <div class="day-date">${fechaParaDia(recorrido.fechaInicio, d-1)}<span class="dia-futuro-nota"> · todavía no llegó</span></div>
+      ${recorrido.fechaInicio ? `<div class="day-turno" id="turno-${d}"></div>` : ""}
       <div class="day-progress"><div class="day-progress-fill" id="fill-${d}"></div></div>
       ${groupsHtml}
     `;
@@ -1723,7 +1809,7 @@ function renderCierre(){
 async function terminarMisDias(){
   if(!confirm("¿Terminaste tus días? Vas a ver tu cierre y tu resultado queda guardado. Si volvés y tildás algo, se reabre.")) return;
   const hoy = diaDeHoy();
-  const pct = calcularVictoria(tareas, participanteId, recorrido, hoy >= 1 ? hoy : TOTAL_DIAS);
+  const pct = calcularVictoria(tareas, participanteId, recorrido, hoy >= 1 ? hoy : TOTAL_DIAS, turnosRec);
   try{
     await participanteRef().update({ cierre: { pct, dia: hoy, fecha: Date.now() }, vioCierre: true });
     showVictory(mensajeCierre(pct));
@@ -1806,8 +1892,23 @@ function leerNotifForm(){
   });
   return notif;
 }
+// Si te anotaste en turnos, los recordatorios llegan solo en tus días; si no, todos los días
+function misFechasDeTurno(){
+  if(modoAdmin || !participanteId) return [];
+  return Object.keys(turnosRec).filter(f => turnosRec[f].pid === participanteId).sort();
+}
+function renderNotaRecordatorios(){
+  const el = document.getElementById("notifDiasNota");
+  if(!el) return;
+  const mias = misFechasDeTurno();
+  el.textContent = mias.length
+    ? ` Te llegan solo en tus días de turnos (${mias.map(f => { const [y,m,d] = f.split("-"); return `${Number(d)}/${Number(m)}`; }).join(", ")}).`
+    : " Como no te anotaste en ningún día de turnos, te llegan todos los días.";
+}
 function checkReminders(){
   if(!("Notification" in window) || Notification.permission !== "granted") return;
+  const mias = misFechasDeTurno();
+  if(mias.length && !mias.includes(hoyISO())) return;
   const now = new Date();
   const hhmm = now.toTimeString().slice(0,5);
   const notif = leerNotifForm();
@@ -2174,6 +2275,7 @@ async function loadRecorridosActivos(){
     const activos = [], pasados = [];
     snap.forEach(doc => {
       const r = doc.data();
+      if(r.borrador) return;   // los borradores no se muestran hasta que el admin los publica
       const terminado = !!r.fechaInicio && diaDelRecorrido(r) > (r.dias || 3);
       (r.activo && !terminado ? activos : pasados).push(doc);
     });
@@ -2191,10 +2293,31 @@ async function loadRecorridosActivos(){
     pasados.forEach(doc => pasadosEl.appendChild(botonRecorrido(doc, true)));
     document.getElementById("pasadosWrap").style.display = pasados.length ? "block" : "none";
     renderTuRecorrido();
+    renderTurnosHome(activos);
   }catch(e){
     console.error(e);
     el.innerHTML = "<p style='color:#A65136; font-size:14px;'>Error cargando recorridos.</p>";
   }
+}
+
+// Turnos de cada recorrido activo: una línea con cuántos días están cubiertos
+async function renderTurnosHome(activos){
+  const el = document.getElementById("turnosHome");
+  const conFecha = activos.filter(doc => doc.data().fechaInicio);
+  const lineas = await Promise.all(conFecha.map(async doc => {
+    const r = doc.data();
+    const turnos = {};
+    try{ (await doc.ref.collection("turnos").get()).forEach(t => turnos[t.id] = t.data()); }
+    catch(e){ console.error(e); }
+    const fechas = fechasDelRecorrido(r);
+    const cubiertos = turnosCubiertos(r, turnos);
+    const nombre = conFecha.length > 1 ? ` · ${escapeHtml(r.nombre || "")}` : "";
+    return `<a class="turnos-home" href="turnos.html?r=${doc.id}"><span>🗓️</span>
+      <span class="th-t"><b>Turnos</b>${nombre} · ${cubiertos} de ${fechas.length} cubiertos</span>
+      <span class="th-barra">${fechas.map(f => `<i class="${turnos[f] ? "ok" : ""}"></i>`).join("")}</span>
+      <span class="th-ir">Ver →</span></a>`;
+  }));
+  el.innerHTML = lineas.join("");
 }
 
 function botonRecorrido(doc, pasado){

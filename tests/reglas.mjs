@@ -121,6 +121,59 @@ await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(),"recorridos/co
 await t("código: si el admin genera uno nuevo, el viejo deja de servir", assertFails(entrarCon(anonA, "anonA", "ana", "482913")));
 await t("código: el nuevo sí sirve", assertSucceeds(entrarCon(anonA, "anonA", "ana", "999888")));
 
+// ===== Turnos: un documento por fecha, un día por persona a la vez =====
+const masDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const fTurno = n => iso(masDias(hoy, n));
+await env.withSecurityRulesDisabled(async c => {
+  const f = c.firestore();
+  // Empezó hace 2 días y dura 11: hay días pasados, hoy y días que vienen
+  await setDoc(doc(f,"recorridos/tur"), {nombre:"Turnos", dias:11, fechaInicio:fTurno(-2), activo:true});
+  await setDoc(doc(f,"recorridos/tur/participantes/lauti"), {nombre:"Lauti", uid:"uidA"});
+  await setDoc(doc(f,"recorridos/tur/participantes/juan"), {nombre:"Juan", uid:"uidB"});
+  await setDoc(doc(f,"recorridos/tur/participantes/libre"), {nombre:"Libre", uid:null});
+  await setDoc(doc(f,"recorridos/tur/turnos/" + fTurno(-1)), {fecha:fTurno(-1), pid:"lauti", nombre:"Lauti", comentario:"", uid:"uidA", actualizado:1});
+  await setDoc(doc(f,"recorridos/borr"), {nombre:"Borrador", dias:3, fechaInicio:fTurno(1), activo:true, borrador:true});
+  await setDoc(doc(f,"recorridos/borr/participantes/lauti"), {nombre:"Lauti", uid:"uidA"});
+});
+const turno = (fecha, pid, uid, extra = {}) => ({fecha, pid, nombre:pid, comentario:"", uid, actualizado:5, ...extra});
+const tRef = (db, fecha, rid = "tur") => doc(db, `recorridos/${rid}/turnos/${fecha}`);
+await t("turnos: cualquiera los lee (sin cuenta)", assertSucceeds(getDocs(collection(anon,"recorridos/tur/turnos"))));
+await t("turnos: sin cuenta no se anota", assertFails(setDoc(tRef(anon, fTurno(3)), turno(fTurno(3), "lauti", null))));
+await t("turnos: Lauti se anota en un día libre", assertSucceeds(setDoc(tRef(A, fTurno(3)), turno(fTurno(3), "lauti", "uidA", {comentario:"Llego 19 h"}))));
+await t("turnos: Juan no pisa el día de Lauti", assertFails(setDoc(tRef(B, fTurno(3)), turno(fTurno(3), "juan", "uidB"))));
+await t("turnos: Juan no edita el comentario de Lauti", assertFails(updateDoc(tRef(B, fTurno(3)), {comentario:"jaja", uid:"uidB"})));
+await t("turnos: Juan no libera el día de Lauti", assertFails(deleteDoc(tRef(B, fTurno(3)))));
+await t("turnos: Juan no anota a Lauti", assertFails(setDoc(tRef(B, fTurno(4)), turno(fTurno(4), "lauti", "uidB"))));
+await t("turnos: nadie anota a alguien sin vincular", assertFails(setDoc(tRef(B, fTurno(4)), turno(fTurno(4), "libre", "uidB"))));
+await t("turnos: Lauti edita su comentario", assertSucceeds(updateDoc(tRef(A, fTurno(3)), {comentario:"Llego 20 h", uid:"uidA", actualizado:6})));
+await t("turnos: Lauti no le pasa su día a Juan", assertFails(updateDoc(tRef(A, fTurno(3)), {pid:"juan", uid:"uidA"})));
+await t("turnos: comentario de más de 400 rechazado", assertFails(updateDoc(tRef(A, fTurno(3)), {comentario:"x".repeat(401), uid:"uidA"})));
+await t("turnos: nombre vacío rechazado", assertFails(setDoc(tRef(A, fTurno(5)), turno(fTurno(5), "lauti", "uidA", {nombre:""}))));
+await t("turnos: campo extra rechazado", assertFails(setDoc(tRef(A, fTurno(5)), turno(fTurno(5), "lauti", "uidA", {puntos:100}))));
+await t("turnos: fecha distinta al id rechazada", assertFails(setDoc(tRef(A, fTurno(5)), turno(fTurno(6), "lauti", "uidA"))));
+await t("turnos: día fuera del recorrido (después) rechazado", assertFails(setDoc(tRef(A, fTurno(9)), turno(fTurno(9), "lauti", "uidA"))));
+await t("turnos: último día del recorrido sí", assertSucceeds(setDoc(tRef(A, fTurno(8)), turno(fTurno(8), "lauti", "uidA"))));
+await t("turnos: id que no es fecha rechazado", assertFails(setDoc(tRef(A, "hola"), turno("hola", "lauti", "uidA"))));
+await t("turnos: hoy todavía se puede anotar", assertSucceeds(setDoc(tRef(B, fTurno(0)), turno(fTurno(0), "juan", "uidB"))));
+await t("turnos: un día que ya pasó no se toma", assertFails(setDoc(tRef(B, fTurno(-2)), turno(fTurno(-2), "juan", "uidB"))));
+await t("turnos: un día que ya pasó no se libera", assertFails(deleteDoc(tRef(A, fTurno(-1)))));
+await t("turnos: un día que ya pasó no se edita", assertFails(updateDoc(tRef(A, fTurno(-1)), {comentario:"x", uid:"uidA"})));
+await t("turnos: Lauti libera su día", assertSucceeds(deleteDoc(tRef(A, fTurno(3)))));
+await t("turnos: liberado, Juan lo toma", assertSucceeds(setDoc(tRef(B, fTurno(3)), turno(fTurno(3), "juan", "uidB"))));
+await t("turnos: admin anota a cualquiera", assertSucceeds(setDoc(tRef(admin, fTurno(6)), turno(fTurno(6), "libre", "adminUid"))));
+await t("turnos: admin cambia a la persona de un día", assertSucceeds(updateDoc(tRef(admin, fTurno(3)), {pid:"lauti", nombre:"Lauti"})));
+await t("turnos: admin libera un día que ya pasó", assertSucceeds(deleteDoc(tRef(admin, fTurno(-1)))));
+await t("turnos: si el admin anotó a Lauti, Lauti igual lo edita", assertSucceeds(updateDoc(tRef(A, fTurno(3)), {comentario:"ok", uid:"uidA"})));
+await t("turnos: recorrido archivado, no se anota", assertFails(setDoc(tRef(A, iso(hoy), "archivado"), turno(iso(hoy), "lauti", "uidA"))));
+await t("turnos: recorrido que ya terminó, no se anota", assertFails(setDoc(tRef(A, "2020-01-02", "pasado"), turno("2020-01-02", "lauti", "uidA"))));
+await t("borrador: Lauti no se anota", assertFails(setDoc(tRef(A, fTurno(1), "borr"), turno(fTurno(1), "lauti", "uidA"))));
+await t("borrador: Lauti no tilda", assertFails(setDoc(doc(A,"recorridos/borr/tareas/1_milo_seco_1"), tareaA(1,"milo_seco_1"))));
+await t("borrador: Lauti no comenta", assertFails(setDoc(doc(A,"recorridos/borr/comentarios/c1"), {uid:"uidA", mensaje:"hola"})));
+await t("borrador: admin sí anota", assertSucceeds(setDoc(tRef(admin, fTurno(1), "borr"), turno(fTurno(1), "lauti", "adminUid"))));
+await t("borrador: admin lo publica", assertSucceeds(updateDoc(doc(admin,"recorridos/borr"), {borrador:false})));
+await t("publicado: Lauti ya puede anotarse", assertSucceeds(setDoc(tRef(A, fTurno(2), "borr"), turno(fTurno(2), "lauti", "uidA"))));
+await t("borrador: un usuario no lo publica", assertFails(updateDoc(doc(A,"recorridos/borr"), {borrador:true})));
+
 console.log(`\n${n} pruebas OK`);
 await env.cleanup();
 process.exit(0);

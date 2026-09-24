@@ -21,13 +21,14 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(pid)).data.get('uid', null) == request.auth.uid;
     }
 
-    // Un recorrido está abierto mientras está activo y no pasó su día de gracia (el día siguiente
-    // al último). Cierra a las 06:00 UTC del día después del de gracia = 03:00 en Argentina.
-    // Cerrado o archivado: los participantes solo pueden mirar; el admin puede todo.
+    // Un recorrido está abierto mientras está activo, publicado y no pasó su día de gracia (el día
+    // siguiente al último). Cierra a las 06:00 UTC del día después del de gracia = 03:00 en Argentina.
+    // Cerrado, archivado o borrador: los participantes solo pueden mirar; el admin puede todo.
     function abierto(rid) {
       let r = get(/databases/$(database)/documents/recorridos/$(rid)).data;
       let f = r.get('fechaInicio', '');
       return r.get('activo', true) == true
+        && r.get('borrador', false) != true
         && (f == '' || request.time < timestamp.date(int(f.split('-')[0]), int(f.split('-')[1]), int(f.split('-')[2])) + duration.value((r.get('dias', 3) + 1) * 24 + 6, 'h'));
     }
 
@@ -54,6 +55,31 @@ service cloud.firestore {
     // Código personal de un participante (lo genera el admin; nadie más lo puede leer)
     function codigoDe(rid, pid) {
       return get(/databases/$(database)/documents/recorridos/$(rid)/codigos/$(pid)).data.codigo;
+    }
+
+    // "2026-10-10" -> timestamp de ese día a las 00:00 UTC
+    function fechaTs(f) {
+      return timestamp.date(int(f.split('-')[0]), int(f.split('-')[1]), int(f.split('-')[2]));
+    }
+
+    // Turno válido: un día dentro del recorrido, con nombre y comentario de largo razonable
+    function turnoValido(rid, fecha) {
+      let r = get(/databases/$(database)/documents/recorridos/$(rid)).data;
+      let d = request.resource.data;
+      return d.keys().hasOnly(['fecha', 'pid', 'nombre', 'comentario', 'uid', 'actualizado'])
+        && fecha.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$')
+        && d.fecha == fecha
+        && d.uid == request.auth.uid
+        && d.nombre is string && d.nombre.size() > 0 && d.nombre.size() <= 40
+        && d.comentario is string && d.comentario.size() <= 400
+        && fechaTs(fecha) >= fechaTs(r.fechaInicio)
+        && fechaTs(fecha) < fechaTs(r.fechaInicio) + duration.value(r.dias * 24, 'h');
+    }
+
+    // Los días que ya pasaron quedan fijos: se puede tocar hasta las 03:00 UTC del día siguiente
+    // (= medianoche en Argentina)
+    function diaSinPasar(fecha) {
+      return request.time < fechaTs(fecha) + duration.value(27, 'h');
     }
 
     function comentarioPropio() {
@@ -105,6 +131,27 @@ service cloud.firestore {
               && tid == string(request.resource.data.dia) + '_' + request.resource.data.key);
         allow update: if isAdmin();
         allow delete: if isAdmin() || (soyParticipante(rid, resource.data.pid) && abierto(rid));
+      }
+
+      // Turnos: un documento por fecha. Solo se toma un día libre (create); después solo lo cambia
+      // o lo libera quien lo tomó (o el admin)
+      match /turnos/{fecha} {
+        allow read: if true;
+        allow create: if isAdmin()
+          || (soyParticipante(rid, request.resource.data.pid)
+              && abierto(rid)
+              && turnoValido(rid, fecha)
+              && diaSinPasar(fecha));
+        allow update: if isAdmin()
+          || (soyParticipante(rid, resource.data.pid)
+              && request.resource.data.pid == resource.data.pid
+              && abierto(rid)
+              && turnoValido(rid, fecha)
+              && diaSinPasar(fecha));
+        allow delete: if isAdmin()
+          || (soyParticipante(rid, resource.data.pid)
+              && abierto(rid)
+              && diaSinPasar(fecha));
       }
 
       // Códigos personales: solo el admin los ve y los cambia

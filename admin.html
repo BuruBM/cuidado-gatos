@@ -61,6 +61,14 @@
   .recorrido-item .link-box input{flex:1 1 100%; min-width:0;}
   .recorrido-item .link-box input{font-size:12px; padding:6px 8px;}
   .tag-activo{display:inline-block; background:var(--success-soft); color:#3E5324; font-size:11px; font-weight:700; padding:2px 8px; border-radius:100px;}
+  .tag-borrador{display:inline-block; background:#E7E1D3; color:var(--ink-soft); font-size:11px; font-weight:700; padding:2px 8px; border-radius:100px; border:1px dashed #A8A08F;}
+  .recorrido-item.borrador{border-style:dashed; background:transparent;}
+  .aviso-borrador{font-size:12.5px; color:var(--ink-soft); margin:0 0 8px; line-height:1.4;}
+  .turnos-admin{margin:0 0 10px; padding:9px 12px; border-radius:12px; background:var(--orange-soft, #FBE7D2); font-size:13px;}
+  .turnos-admin b{display:block; margin-bottom:3px;}
+  .turnos-admin .link-mini{margin-right:12px;}
+  html.dark .turnos-admin{background:#3A2A19;}
+  html.dark .recorrido-item.borrador{background:transparent;}
   .tag-archivado{display:inline-block; background:var(--line); color:var(--ink-soft); font-size:11px; font-weight:700; padding:2px 8px; border-radius:100px;}
   .participante-row{display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
   .participante-row:last-child{border-bottom:none;}
@@ -134,7 +142,13 @@
       <button class="btn small secondary" id="fAgregarPersona" style="margin-top:8px;">+ Agregar persona</button>
       <label>Mensaje pop-up de bienvenida (opcional, lo ve cada persona una vez al entrar)</label>
       <textarea id="fPopup" placeholder="Ej: ¡Gracias por bancarnos estos días! Cualquier cosa nos escribís."></textarea>
-      <button class="btn" style="margin-top:16px;" id="crearBtn">Crear recorrido</button>
+      <label>Bienvenida de la página de turnos (opcional; es lo primero que lee quien abre el link)</label>
+      <textarea id="fBienvenida" placeholder="Si lo dejás vacío: &quot;Del sáb 10 oct al mar 20 oct, Milo y Zoe necesitan quién los cuide. Una persona por día: elegí un día libre y anotate. Si querés, dejá un comentario (horario, si tenés llave…).&quot;"></textarea>
+      <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:16px;">
+        <button class="btn secondary" id="borradorBtn">Guardar borrador</button>
+        <button class="btn" id="crearBtn">Crear y publicar</button>
+      </div>
+      <p style="font-size:12.5px; color:var(--ink-soft); margin:6px 0 0;">El borrador solo lo ves vos: no aparece en la home y el link (ni el de turnos) les funciona a los demás hasta que lo publiques.</p>
       <div id="crearMsg" style="font-size:13.5px; margin-top:10px; color:var(--success); word-break:break-all;"></div>
     </div>
 
@@ -364,17 +378,24 @@ function generarCodigo(){
   return String(100000 + n[0] % 900000);
 }
 function mensajeCodigo(nombre, recorridoId, codigo){
-  return `¡Hola ${nombre}! 🐾 Para cuidar a Milo y Zoe entrá a ${linkDe(recorridoId)}\n` +
-    `Tocá "Entrá con tu código", elegí tu nombre y poné este código: ${codigo}\n` +
-    `(Si preferís, también podés entrar con Google.)`;
+  return `¡Hola ${nombre}! 🐾 Anotate en los días para cuidar a Milo y Zoe: ${linkTurnos(recorridoId)}\n` +
+    `Elegí tu nombre y entrá con este código: ${codigo} (si preferís, también podés entrar con Google).\n` +
+    `Las tareas de cada día están acá: ${linkDe(recorridoId)}`;
+}
+function mensajeTurnos(recorridoId){
+  return `¡Hola! 🐾 Anotate en los días para cuidar a Milo y Zoe: ${linkTurnos(recorridoId)}\n` +
+    `Elegí un día libre, tu nombre, y entrá con tu código personal (te lo paso aparte) o con Google.`;
 }
 
 // ===== Crear recorrido =====
-document.getElementById("crearBtn").addEventListener("click", async () => {
+document.getElementById("crearBtn").addEventListener("click", () => crearRecorrido(false));
+document.getElementById("borradorBtn").addEventListener("click", () => crearRecorrido(true));
+async function crearRecorrido(borrador){
   const nombre = document.getElementById("fNombre").value.trim();
   const dias = parseInt(document.getElementById("fDias").value) || 3;
   const fechaInicio = document.getElementById("fFecha").value;
   const popupGlobal = document.getElementById("fPopup").value.trim();
+  const bienvenidaTurnos = document.getElementById("fBienvenida").value.trim().slice(0, 1000);
   const personas = Array.from(document.querySelectorAll("#fPersonas .persona-form"))
     .map(row => ({ nombre: row.querySelector(".p-nombre").value.trim(), avatar: row.querySelector(".p-foto").dataset.avatar || "" }))
     .filter(p => p.nombre);
@@ -389,20 +410,26 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
     }
   }
 
-  const btn = document.getElementById("crearBtn");
+  const btn = document.getElementById(borrador ? "borradorBtn" : "crearBtn");
+  const textoBtn = btn.textContent;
   btn.disabled = true; btn.textContent = "Creando...";
   try{
     const docRef = await db.collection("recorridos").add({
       nombre, dias, fechaInicio,
       popupGlobal: popupGlobal || "",
+      bienvenidaTurnos,
       activo: true,
+      borrador,
       creado: Date.now()
     });
     for(const p of personas) await crearParticipante(docRef.id, nombre, p.nombre, p.avatar);
     const url = linkDe(docRef.id);
-    document.getElementById("crearMsg").innerHTML = `Recorrido creado. Link: <a href="${url}" target="_blank">${url}</a>`;
+    document.getElementById("crearMsg").innerHTML = borrador
+      ? `Borrador guardado. Publicalo desde la lista cuando esté listo.`
+      : `Recorrido creado. Link: <a href="${url}" target="_blank">${url}</a>`;
     document.getElementById("fNombre").value = "";
     document.getElementById("fPopup").value = "";
+    document.getElementById("fBienvenida").value = "";
     document.getElementById("fPersonas").innerHTML = "";
     agregarFilaPersona();
     cargarRecorridos();
@@ -410,10 +437,11 @@ document.getElementById("crearBtn").addEventListener("click", async () => {
     console.error(e);
     toast("Error al crear. Revisá la consola.");
   }
-  btn.disabled = false; btn.textContent = "Crear recorrido";
-});
+  btn.disabled = false; btn.textContent = textoBtn;
+}
 
 function etiquetaEstado(r){
+  if(r.borrador) return '<span class="tag-borrador">borrador</span>';
   if(!r.activo) return '<span class="tag-archivado">archivado</span>';
   if(r.fechaInicio && diaDelRecorrido(r) > (r.dias || 3)) return '<span class="tag-archivado">terminado</span>';
   return '<span class="tag-activo">activo</span>';
@@ -421,6 +449,9 @@ function etiquetaEstado(r){
 
 function linkDe(id){
   return `${location.origin}${location.pathname.replace("admin.html","index.html")}?r=${id}`;
+}
+function linkTurnos(id){
+  return `${location.origin}${location.pathname.replace("admin.html","turnos.html")}?r=${id}`;
 }
 
 // ===== Listado + monitoreo en vivo =====
@@ -437,18 +468,26 @@ async function cargarRecorridos(){
       const id = doc.id;
       const url = linkDe(id);
       const item = document.createElement("div");
-      item.className = "recorrido-item";
+      item.className = "recorrido-item" + (r.borrador ? " borrador" : "");
       item.innerHTML = `
         <h3>${escapeHtml(r.nombre || "(sin nombre)")} ${etiquetaEstado(r)}</h3>
-        <div class="meta">${r.dias} días · desde ${escapeHtml(r.fechaInicio || "?")}</div>
+        <div class="meta">${r.dias} días · desde ${escapeHtml(r.fechaInicio || "?")}${r.borrador ? " · solo lo ves vos" : ""}</div>
+        ${r.borrador ? '<p class="aviso-borrador">No aparece en la home y el link (ni el de turnos) les funciona a los demás hasta que lo publiques.</p>' : ""}
         <div class="link-box">
           <input type="text" readonly value="${url}">
+          ${r.borrador ? '<button class="btn small" data-accion="publicar">Publicar</button>' : ""}
           <button class="btn small secondary" data-accion="copiar">Copiar</button>
-          <button class="btn small secondary" data-accion="archivar">${r.activo ? 'Archivar' : 'Reactivar'}</button>
+          ${r.borrador ? "" : `<button class="btn small secondary" data-accion="archivar">${r.activo ? 'Archivar' : 'Reactivar'}</button>`}
           <a class="btn small secondary" href="${url}&modo=admin" style="text-decoration:none;">🔧 Tareas</a>
           <button class="btn small secondary" data-accion="editar">Editar</button>
           <button class="btn small secondary" data-accion="eliminar" style="color:#A65136; border-color:#A65136;">Eliminar</button>
         </div>
+        <div class="turnos-admin">${r.fechaInicio
+          ? `<b class="turnos-cuenta">🗓️ Turnos</b>
+             <a class="link-mini" href="${linkTurnos(id)}" target="_blank">Abrir turnos</a>
+             <button class="link-mini" data-accion="copiar-turnos">Copiar mensaje</button>
+             <a class="link-mini" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(mensajeTurnos(id))}">WhatsApp</a>`
+          : `🗓️ Para usar turnos, poné la fecha de inicio (Editar).`}</div>
         <div class="edit-box" style="display:none; border-top:1px solid var(--line); margin-top:6px; padding-top:12px;">
           <label>Nombre del recorrido</label>
           <input type="text" class="e-nombre" value="${escapeHtml(r.nombre||'')}">
@@ -464,6 +503,8 @@ async function cargarRecorridos(){
           </div>
           <label>Mensaje pop-up de bienvenida</label>
           <textarea class="e-popup">${escapeHtml(r.popupGlobal||'')}</textarea>
+          <label>Bienvenida de la página de turnos (vacío = el texto de siempre, con las fechas)</label>
+          <textarea class="e-bienvenida" placeholder="Del ${escapeHtml(r.fechaInicio||'…')}, Milo y Zoe necesitan quién los cuide. Una persona por día: elegí un día libre y anotate.">${escapeHtml(r.bienvenidaTurnos||'')}</textarea>
           <button class="btn small" style="margin-top:10px;" data-accion="guardar">Guardar cambios</button>
         </div>
         <div class="personas-box">
@@ -497,6 +538,16 @@ async function accionRecorrido(accion, id, r, item){
   const ref = db.collection("recorridos").doc(id);
   try{
     if(accion === "copiar"){ navigator.clipboard.writeText(linkDe(id)); toast("Link copiado"); }
+    if(accion === "publicar"){
+      if(!confirm(`¿Publicar "${r.nombre}"? Va a aparecer en la home y el link va a funcionar para todos.`)) return;
+      await ref.update({ borrador: false });
+      toast("Recorrido publicado");
+      cargarRecorridos();
+    }
+    if(accion === "copiar-turnos"){
+      try{ await navigator.clipboard.writeText(mensajeTurnos(id)); toast("Mensaje copiado: pegalo en WhatsApp"); }
+      catch(err){ prompt("Copiá este mensaje:", mensajeTurnos(id)); }
+    }
     if(accion === "archivar"){
       await ref.update({ activo: !r.activo });
       toast(r.activo ? "Recorrido archivado" : "Recorrido reactivado");
@@ -511,7 +562,8 @@ async function accionRecorrido(accion, id, r, item){
         nombre: item.querySelector(".e-nombre").value.trim(),
         dias: parseInt(item.querySelector(".e-dias").value) || 3,
         fechaInicio: item.querySelector(".e-fecha").value,
-        popupGlobal: item.querySelector(".e-popup").value.trim()
+        popupGlobal: item.querySelector(".e-popup").value.trim(),
+        bienvenidaTurnos: item.querySelector(".e-bienvenida").value.trim().slice(0, 1000)
       });
       toast("Cambios guardados");
       cargarRecorridos();
@@ -548,8 +600,8 @@ async function accionRecorrido(accion, id, r, item){
 
 function escucharRecorrido(recorridoId, r, item){
   const ref = db.collection("recorridos").doc(recorridoId);
-  let participantes = {}, tareas = {}, codigos = {};
-  const render = () => renderPersonas(recorridoId, r, item, participantes, tareas, codigos);
+  let participantes = {}, tareas = {}, codigos = {}, turnos = {};
+  const render = () => renderPersonas(recorridoId, r, item, participantes, tareas, codigos, turnos);
   listeners.push(ref.collection("codigos").onSnapshot(snap => {
     codigos = {};
     snap.forEach(doc => codigos[doc.id] = doc.data().codigo);
@@ -563,6 +615,13 @@ function escucharRecorrido(recorridoId, r, item){
     });
     render();
   }, e => console.error(e)));
+  listeners.push(ref.collection("turnos").onSnapshot(snap => {
+    turnos = {};
+    snap.forEach(doc => turnos[doc.id] = doc.data());
+    const el = item.querySelector(".turnos-cuenta");
+    if(el) el.textContent = `🗓️ Turnos: ${turnosCubiertos(r, turnos)} de ${fechasDelRecorrido(r).length} días cubiertos`;
+    render();
+  }, e => console.error(e)));
   listeners.push(ref.collection("tareas").onSnapshot(snap => {
     tareas = {};
     snap.forEach(doc => tareas[doc.id] = doc.data());
@@ -570,7 +629,7 @@ function escucharRecorrido(recorridoId, r, item){
   }, e => console.error(e)));
 }
 
-function renderPersonas(recorridoId, r, item, participantes, tareas, codigos){
+function renderPersonas(recorridoId, r, item, participantes, tareas, codigos, turnos){
   const box = item.querySelector(".personas-list");
   const pids = Object.keys(participantes).sort((a,b) => (participantes[a].nombre||"").localeCompare(participantes[b].nombre||""));
   renderDestinatarios(item, pids, participantes);
@@ -580,7 +639,7 @@ function renderPersonas(recorridoId, r, item, participantes, tareas, codigos){
     const p = participantes[pid];
     const puntos = Object.values(tareas).filter(t => t.pid === pid).reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
     const dias = new Set(Object.values(tareas).filter(t => t.pid === pid).map(t => t.dia)).size;
-    const victoria = (p.cierre && p.cierre.pct !== undefined) ? p.cierre.pct : calcularVictoria(tareas, pid, r);
+    const victoria = (p.cierre && p.cierre.pct !== undefined) ? p.cierre.pct : calcularVictoria(tareas, pid, r, undefined, turnos);
     const row = document.createElement("div");
     row.className = "persona-row";
     row.innerHTML = `
@@ -632,10 +691,11 @@ function renderPersonas(recorridoId, r, item, participantes, tareas, codigos){
       toast("Cuenta desvinculada");
     });
     row.querySelector('[data-p="quitar"]').addEventListener("click", async () => {
-      if(!confirm(`¿Quitar a ${p.nombre} del recorrido? Se borran también sus tareas tildadas.`)) return;
+      if(!confirm(`¿Quitar a ${p.nombre} del recorrido? Se borran también sus tareas tildadas y los días en que se anotó.`)) return;
       try{
-        const tSnap = await db.collection("recorridos").doc(recorridoId).collection("tareas").where("pid","==",pid).get();
-        await Promise.all(tSnap.docs.map(d => d.ref.delete()));
+        const rref = db.collection("recorridos").doc(recorridoId);
+        const [tSnap, turSnap] = await Promise.all([rref.collection("tareas").where("pid","==",pid).get(), rref.collection("turnos").where("pid","==",pid).get()]);
+        await Promise.all([...tSnap.docs, ...turSnap.docs].map(d => d.ref.delete()));
         await pref.delete();
         await db.collection("recorridos").doc(recorridoId).collection("codigos").doc(pid).delete().catch(() => {});
         toast(`${p.nombre} quitado`);
@@ -694,7 +754,7 @@ async function migrarProgresoViejo(recorridoId, pid, p){
 }
 
 async function eliminarRecorrido(id, nombre){
-  const confirmacion = prompt(`Esto borra "${nombre}" para siempre, junto con las personas, las tareas y los comentarios del recorrido. Escribí ELIMINAR para confirmar:`);
+  const confirmacion = prompt(`Esto borra "${nombre}" para siempre, junto con las personas, las tareas, los turnos y los comentarios del recorrido. Escribí ELIMINAR para confirmar:`);
   if(confirmacion !== "ELIMINAR"){
     if(confirmacion !== null) toast("No coincide, no se borró nada.");
     return;
@@ -702,7 +762,7 @@ async function eliminarRecorrido(id, nombre){
   try{
     const ref = db.collection("recorridos").doc(id);
     const borrados = [];
-    for(const sub of ["participantes","tareas","comentarios","codigos","ingresos"]){
+    for(const sub of ["participantes","tareas","turnos","comentarios","codigos","ingresos"]){
       const snap = await ref.collection(sub).get();
       snap.forEach(doc => borrados.push(doc.ref.delete()));
     }
