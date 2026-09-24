@@ -293,7 +293,6 @@
   .otros-marcadores{position:absolute; inset:0; pointer-events:none;}
   .otro-marcador{position:absolute; width:30px; height:30px; border-radius:50%; border:2px solid #fff; box-shadow:0 2px 5px rgba(43,38,32,0.3); transform:translate(-50%, -120%); display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Karla',sans-serif; font-weight:700; font-size:12px; overflow:hidden; transition:left .5s ease, top .5s ease;}
   .otro-marcador img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated;}
-  .otro-marcador:has(img){filter:drop-shadow(0 1px 2px rgba(43,38,32,0.45)); width:34px !important; height:34px !important;}
   .other-marker circle{stroke:#fff; stroke-width:1.5;}
   .other-marker text{font-family:'Karla',sans-serif; font-weight:700;}
 
@@ -444,10 +443,16 @@
   .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:100px; font-size:13.5px; opacity:0; transition:opacity .3s ease; pointer-events:none; z-index:60; max-width:90vw; text-align:center;}
   .toast.show{opacity:1;}
 
-  /* Avatares con foto: solo la silueta pixelada de la cabeza, sin círculo, borde ni fondo.
-     El círculo con la inicial queda para quien no tiene foto. */
-  .podio-mini-avatar:has(img), .standing-row .dot-color:has(img), .otro-marcador:has(img), .gate-persona-av:has(img), .tu-recorrido .tr-av:has(img){border-radius:0 !important; background:transparent !important; border:none !important; box-shadow:none !important; overflow:visible !important;}
-  .podio-mini-avatar img, .standing-row .dot-color img, .otro-marcador img, .gate-persona-av img, .tu-recorrido .tr-av img{object-fit:contain !important; border-radius:0 !important;}
+  /* Avatares: cuerpo pixelado + cabeza, sin círculo ni fondo. Cada lugar define su alto. */
+  svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .podio-mini-avatar:has(svg.av), .standing-row .dot-color:has(svg.av), .otro-marcador:has(svg.av), .gate-persona-av:has(svg.av), .tu-recorrido .tr-av:has(svg.av){border-radius:0 !important; background:transparent !important; border:none !important; box-shadow:none !important; overflow:visible !important; width:auto !important;}
+  .podio-mini-avatar:has(svg.av){height:38px !important;}
+  .pm1 .podio-mini-avatar:has(svg.av){height:44px !important;}
+  .standing-row .dot-color:has(svg.av){height:36px !important; min-width:22px;}
+  .otro-marcador:has(svg.av){height:46px !important; transform:translate(-50%, -96%) !important; filter:drop-shadow(0 1px 1.5px rgba(43,38,32,0.45));}
+  .gate-persona-av:has(svg.av){height:44px !important; min-width:36px;}
+  .tu-recorrido .tr-av:has(svg.av){height:56px !important; min-width:44px;}
+  .tu-recorrido .tr-av svg.av{filter:drop-shadow(0 0 0.8px #F7F3EA) drop-shadow(0 0 0.8px #F7F3EA);}
 </style>
 <link rel="stylesheet" href="tema-oscuro.css">
 </head>
@@ -1167,8 +1172,7 @@ function renderPersonasGate(){
     const btn = document.createElement("button");
     btn.className = "gate-persona";
     btn.disabled = tomado;
-    const av = avatarDe(participantes[pid]);
-    btn.innerHTML = `<span class="gate-persona-av">${av ? `<img src="${av}" alt="">` : escapeHtml(nombreDe(pid).charAt(0).toUpperCase())}</span>
+    btn.innerHTML = `<span class="gate-persona-av">${avatarSVG(participantes[pid])}</span>
       <span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${tomado ? '<span class="gate-persona-tomado">ya entró</span>' : ""}`;
     btn.addEventListener("click", () => {
       if(confirm(`¿Sos ${nombreDe(pid)}? Tu cuenta de Google (${usuario.email}) va a quedar vinculada a ese nombre.`)) reclamar(pid);
@@ -1222,6 +1226,13 @@ function startApp(){
   ["avatarFaceImg","victoryFaceImg"].forEach(id => {
     document.getElementById(id).setAttribute("href", face);
     document.getElementById(id).setAttribute("xlink:href", face);
+  });
+  // Mi muñequito del camino y del festejo: con los colores de mi avatar
+  const combo = comboAvatar(yo ? yo.nombre : participanteNombre);
+  document.querySelectorAll("#avatarMarker rect, #victoryHeroGroup rect").forEach(r => {
+    const f = r.getAttribute("fill");
+    if(f === "#3E6C64") r.setAttribute("fill", combo.camisa);
+    else if(f === "#C79A2E") r.setAttribute("fill", combo.pantalon);
   });
   const base = `index.html?r=${recorridoId}`;
   document.getElementById("appSession").innerHTML = modoAdmin
@@ -1453,7 +1464,7 @@ function elegirQuien(titulo, actual){
     };
     const abrevs = abreviaturas();
     Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b))).forEach(pid =>
-      opcion(pid, `<span class="gate-persona-av" style="background:${colorDe(pid)}; color:#fff;">${circuloDe(pid, abrevs)}</span><span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${pid === actual ? "✓" : ""}`, pid === actual));
+      opcion(pid, `<span class="gate-persona-av">${circuloDe(pid, abrevs)}</span><span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${pid === actual ? "✓" : ""}`, pid === actual));
     opcion("", `<span class="gate-persona-av">✕</span><span class="gate-persona-nombre">Nadie (destildar)</span>${actual ? "" : "✓"}`, !actual);
     document.getElementById("elegirCancelar").onclick = () => { overlay.classList.remove("show"); resolve(null); };
     overlay.classList.add("show");
@@ -1502,9 +1513,9 @@ function abreviaturas(){
   });
   return out;
 }
+// Avatar de un participante: cuerpo genérico en sus colores + su cabeza (o la burbuja con sus iniciales)
 function circuloDe(pid, abrevs){
-  const av = avatarDe(participantes[pid] || {});
-  return av ? `<img src="${av}" alt="">` : escapeHtml(abrevs[pid] || nombreDe(pid).charAt(0).toUpperCase());
+  return avatarSVG(participantes[pid] || { nombre: nombreDe(pid) }, abrevs && abrevs[pid]);
 }
 
 function fraccionCamino(pid){ return Math.min(1, puntosDe(pid) / totalPuntosPosibles()); }
@@ -1550,7 +1561,6 @@ function updateJourney(){
       const m = document.createElement("div");
       m.className = "otro-marcador";
       m.title = p.nombre;
-      m.style.background = colorDe(p.pid);
       m.style.left = `calc(${(pt.x - vb.x) / vb.width * 100}% + ${(i - (grupo.length - 1) / 2) * 32}px)`;
       m.style.top = `${(pt.y - vb.y) / vb.height * 100}%`;
       m.innerHTML = circuloDe(p.pid, abrevs);
@@ -1570,7 +1580,7 @@ function renderStandings(){
     const vic = p.victoria === null ? "sin días aún" : `${yaCerro(p.pid) ? "🏁 " : ""}${p.victoria}% de sus días`;
     return `<div class="standing-row${p.pid === participanteId ? " me" : ""}" title="${terminado ? "" : "El % es parcial: el día de hoy todavía no cuenta"}">
       <span class="pos">${i+1}</span>
-      <span class="dot-color" style="background:${colorDe(p.pid)}">${dot}</span>
+      <span class="dot-color">${dot}</span>
       <span class="nombre">${escapeHtml(p.nombre)}${p.pid === participanteId ? "<small>(vos)</small>" : ""}</span>
       <span class="pts">${p.puntos} pts</span>
       <span class="pct">${vic}</span>
@@ -1991,7 +2001,7 @@ async function loadPodioMini(){
     el.innerHTML = '<div class="podio-mini">' + [1,0,2].map(idx => {
       const p = top3[idx];
       if(!p) return "";
-      const avatarHtml = p.avatar ? `<img src="${p.avatar}" alt="${escapeHtml(p.nombre)}">` : escapeHtml(p.nombre.charAt(0).toUpperCase());
+      const avatarHtml = avatarSVG({ nombre: p.nombre, avatar: p.avatar });
       return `<div class="podio-mini-spot ${claseByIdx[idx]}">
         <div class="podio-mini-avatar">${avatarHtml}</div>
         <div class="podio-mini-nombre">${escapeHtml(p.nombre)}</div>
@@ -2035,10 +2045,9 @@ async function renderTuRecorrido(){
       : dia < 1 ? `Arranca el ${fechaParaDia(r.fechaInicio, 0)}`
       : dia > (r.dias || 3) ? "Último día para tildar lo que falte"
       : `Día ${dia} de ${r.dias} · hoy ${fechaParaDia(r.fechaInicio, dia - 1)}`;
-    const av = avatarDe(p);
     const btn = document.createElement("button");
     btn.className = "tu-recorrido";
-    btn.innerHTML = `<span class="tr-av">${av ? `<img src="${av}" alt="">` : escapeHtml((p.nombre || "?").charAt(0).toUpperCase())}</span>
+    btn.innerHTML = `<span class="tr-av">${avatarSVG(p)}</span>
       <span class="tr-texto"><span class="tr-eyebrow">Tu recorrido · ${escapeHtml(p.nombre || "")}</span><b>${escapeHtml(r.nombre || "Recorrido")}</b><span class="tr-detalle">${escapeHtml(detalle)}</span></span>
       <span class="tr-ir">Ir →</span>`;
     btn.addEventListener("click", () => { window.location.href = `index.html?r=${doc.id}`; });

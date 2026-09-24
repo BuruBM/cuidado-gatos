@@ -204,6 +204,46 @@ function avatarDe(p){
   return "";
 }
 
+// ===== Avatar: cuerpo pixelado genérico (mismo para todos, en distintos colores) + la cabeza de cada uno =====
+// La cabeza es la foto recortada y pixelada que carga el admin; sin foto, una burbuja con la inicial.
+const COMBOS_AVATAR = [
+  { camisa:"#3E6C64", pantalon:"#C79A2E" },   // verde / mostaza (el del camino)
+  { camisa:"#DD8A3D", pantalon:"#355F58" },   // naranja / verde oscuro
+  { camisa:"#A65136", pantalon:"#C79A2E" },   // terracota / mostaza
+  { camisa:"#3E9C8E", pantalon:"#A65136" },   // verde agua / terracota
+  { camisa:"#C79A2E", pantalon:"#3E6C64" },   // mostaza / verde
+  { camisa:"#5E7A3D", pantalon:"#DD8A3D" },   // oliva / naranja
+  { camisa:"#355F58", pantalon:"#E3B04B" },   // verde oscuro / amarillo
+  { camisa:"#D9805F", pantalon:"#3E9C8E" }    // coral / verde agua
+];
+function comboAvatar(clave){
+  const txt = normalizarNombre(clave) || "x";
+  let h = 0;
+  for(const ch of txt) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return COMBOS_AVATAR[h % COMBOS_AVATAR.length];
+}
+// Filas del cuerpo, 8 columnas de 2.6 de ancho: C = camisa, P = pantalón, Z = zapatos
+const CUERPO_AVATAR = ["CCCCCCCC", "CCCCCCCC", "CCCCCCCC", "CCPPPPCC", "PPPPPPPP", "PP....PP", "ZZ....ZZ"];
+function cuerpoAvatarSVG(combo){
+  const color = { C: combo.camisa, P: combo.pantalon, Z: "#4A3728" };
+  let r = "";
+  CUERPO_AVATAR.forEach((fila, y) => [...fila].forEach((ch, x) => {
+    if(ch !== ".") r += `<rect x="${(-10.4 + x * 2.6).toFixed(2)}" y="${(-3.4 + y * 2.6).toFixed(2)}" width="2.62" height="2.62" fill="${color[ch]}"/>`;
+  }));
+  return r;
+}
+// p: datos del participante (nombre, avatar); texto: lo que va en la burbuja si no hay foto (por defecto la inicial)
+function avatarSVG(p, texto){
+  p = p || {};
+  const combo = comboAvatar(p.nombre);
+  const foto = avatarDe(p);
+  const letra = escapeHtml(texto || (p.nombre || "?").trim().charAt(0).toUpperCase());
+  const cabeza = foto
+    ? `<image href="${foto}" x="-10" y="-21.2" width="20" height="20" preserveAspectRatio="xMidYMax meet" style="image-rendering:pixelated"/>`
+    : `<circle cx="0" cy="-10.6" r="8.4" fill="${combo.camisa}" stroke="#fff" stroke-width="1"/><text x="0" y="-7.2" text-anchor="middle" font-size="${letra.length > 1 ? 8.5 : 10}" font-weight="700" fill="#fff" font-family="Karla, sans-serif">${letra}</text>`;
+  return `<svg class="av" viewBox="-11 -21.5 22 36.5" shape-rendering="crispEdges" aria-label="${escapeHtml(p.nombre || "")}">${cuerpoAvatarSVG(combo)}${cabeza}</svg>`;
+}
+
 // ===== Ranking global: puntos por tarea tildada, sumando todos los recorridos =====
 async function calcularRanking(){
   const [partsSnap, tareasSnap] = await Promise.all([

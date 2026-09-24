@@ -55,10 +55,10 @@
   .fila .stat{font-size:13px; color:var(--ink-soft); text-align:right;}
   .empty{color:var(--ink-soft); font-size:14px; padding:30px 0;}
 
-  /* Avatares con foto: solo la silueta pixelada de la cabeza, sin círculo, borde ni fondo.
-     El círculo con la inicial queda para quien no tiene foto. */
-  .podio-avatar:has(img){border-radius:0 !important; background:transparent !important; border:none !important; box-shadow:none !important; overflow:visible !important;}
-  .podio-avatar img{object-fit:contain !important; border-radius:0 !important;}
+  /* Avatares: cuerpo pixelado + cabeza, sin círculo ni fondo */
+  svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .podio-avatar:has(svg.av){border-radius:0 !important; background:transparent !important; border:none !important; overflow:visible !important; width:auto !important; height:70px !important;}
+  .p1 .podio-avatar:has(svg.av){height:84px !important;}
 </style>
 <link rel="stylesheet" href="tema-oscuro.css">
 </head>
@@ -88,7 +88,7 @@ async function cargarRanking(){
 }
 
 function avatarHtml(p){
-  return p.avatar ? `<img src="${p.avatar}" alt="${escapeHtml(p.nombre)}">` : escapeHtml(p.nombre.charAt(0).toUpperCase());
+  return avatarSVG({ nombre: p.nombre, avatar: p.avatar });
 }
 
 function renderPodio(top3){

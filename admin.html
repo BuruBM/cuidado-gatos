@@ -71,7 +71,8 @@
   .persona-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
   .persona-row:last-child{border-bottom:none;}
   .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
-  .persona-row img{width:36px; height:36px; flex:none; object-fit:contain; image-rendering:pixelated;}
+  .persona-row .persona-av{height:44px; flex:none; display:block;}
+  .persona-row svg.av{height:100%; width:auto; display:block; overflow:visible;}
   .persona-row .sin-foto{display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--ink-soft);}
   .persona-row .info{flex:1 1 150px; min-width:150px;}
   .persona-row .info small{display:block; color:var(--ink-soft); font-size:12px;}
@@ -227,14 +228,15 @@ async function quitarFondo(canvas){
   if(yaTieneTransparencia(ctx, lado)) return "ya-transparente";
   const segmentador = await obtenerSegmentador();
   const resultado = segmentador.segment(canvas);
-  // Clases: 0 fondo, 1 pelo, 2 piel del cuerpo, 3 piel de la cara, 4 ropa, 5 otros
-  const fondo = resultado.confidenceMasks[0];
-  const w = fondo.width, h = fondo.height, prob = fondo.getAsFloat32Array();
+  // Clases: 0 fondo, 1 pelo, 2 piel del cuerpo, 3 piel de la cara, 4 ropa, 5 otros.
+  // Nos quedamos solo con la cabeza (pelo + cara): el cuerpo lo pone el avatar genérico.
+  const pelo = resultado.confidenceMasks[1].getAsFloat32Array(), cara = resultado.confidenceMasks[3].getAsFloat32Array();
+  const w = resultado.confidenceMasks[1].width, h = resultado.confidenceMasks[1].height;
   const datos = ctx.getImageData(0, 0, lado, lado);
   for(let y = 0; y < lado; y++){
     for(let x = 0; x < lado; x++){
-      const p = prob[Math.min(h - 1, Math.floor(y * h / lado)) * w + Math.min(w - 1, Math.floor(x * w / lado))];
-      const persona = Math.min(1, Math.max(0, (1 - p - 0.35) / 0.3));   // borde suave
+      const i = Math.min(h - 1, Math.floor(y * h / lado)) * w + Math.min(w - 1, Math.floor(x * w / lado));
+      const persona = Math.min(1, Math.max(0, (pelo[i] + cara[i] - 0.35) / 0.3));   // borde suave
       datos.data[(y * lado + x) * 4 + 3] *= persona;
     }
   }
@@ -262,10 +264,10 @@ async function encuadreDeLaCara(img){
   if(x1 < 0 || (x1 - x0) * (y1 - y0) < w * h * 0.01) return null;   // no encontró una cara clara
   const escala = side / w;
   const cx = sx + (x0 + x1) / 2 * escala, cy = sy + (y0 + y1) / 2 * escala;
-  let lado = Math.max(x1 - x0, y1 - y0) * escala * 1.6;                // un poco de aire alrededor
+  let lado = Math.max(x1 - x0, y1 - y0) * escala * 1.12;               // la cabeza llena el cuadro
   lado = Math.min(lado, img.width, img.height);
   const ox = Math.min(Math.max(cx - lado / 2, 0), img.width - lado);
-  const oy = Math.min(Math.max(cy - lado / 2 + lado * 0.06, 0), img.height - lado);
+  const oy = Math.min(Math.max(cy - lado / 2, 0), img.height - lado);
   return { x: ox, y: oy, lado };
 }
 
@@ -557,11 +559,10 @@ function renderPersonas(recorridoId, r, item, participantes, tareas){
     const puntos = Object.values(tareas).filter(t => t.pid === pid).reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
     const dias = new Set(Object.values(tareas).filter(t => t.pid === pid).map(t => t.dia)).size;
     const victoria = (p.cierre && p.cierre.pct !== undefined) ? p.cierre.pct : calcularVictoria(tareas, pid, r);
-    const av = avatarDe(p);
     const row = document.createElement("div");
     row.className = "persona-row";
     row.innerHTML = `
-      ${av ? `<img src="${av}" alt="">` : `<div class="sin-foto">${escapeHtml((p.nombre||"?").charAt(0).toUpperCase())}</div>`}
+      <span class="persona-av">${avatarSVG(p)}</span>
       <div class="info">${escapeHtml(p.nombre)}
         <small>${p.uid ? '<span class="vinculado">✓ cuenta vinculada</span>' : 'sin vincular todavía'} · ${puntos} pts · ${dias} día${dias===1?"":"s"}${victoria === null ? "" : ` · ${p.cierre ? "🏁 " : ""}${victoria}% de sus días`}</small>
       </div>
