@@ -108,6 +108,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await adm.waitForSelector("#loginBtn"); await login(adm);
   await adm.waitForSelector("#panelWrap", { state:"visible" });
   check((await adm.inputValue("#fFecha")) === iso(0), "fecha por defecto = hoy en hora local");
+  check(await adm.isVisible('#panelWrap a[href="index.html"]'), "el panel tiene 'Volver al inicio'");
   await adm.fill("#fNombre", "Prueba Octubre");
   await adm.fill("#fDias", "3");
   await adm.fill("#fPopup", "¡Gracias por venir! Cualquier cosa escribinos.");
