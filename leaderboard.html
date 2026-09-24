@@ -54,6 +54,11 @@
   .fila .nombre small{display:block; color:var(--ink-soft); font-size:11.5px;}
   .fila .stat{font-size:13px; color:var(--ink-soft); text-align:right;}
   .empty{color:var(--ink-soft); font-size:14px; padding:30px 0;}
+
+  /* Avatares con foto: solo la silueta pixelada de la cabeza, sin círculo, borde ni fondo.
+     El círculo con la inicial queda para quien no tiene foto. */
+  .podio-avatar:has(img){border-radius:0 !important; background:transparent !important; border:none !important; box-shadow:none !important; overflow:visible !important;}
+  .podio-avatar img{object-fit:contain !important; border-radius:0 !important;}
 </style>
 <link rel="stylesheet" href="tema-oscuro.css">
 </head>

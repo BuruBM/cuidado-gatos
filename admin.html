@@ -52,7 +52,7 @@
   .add-persona input[type=file]{max-width:100%;}
   .row > div{flex:1;}
   .avatar-preview{display:flex; align-items:center; gap:14px; margin-top:10px;}
-  .avatar-preview img{width:64px; height:64px; border-radius:50%; background:var(--bg); border:2px solid var(--line); image-rendering:pixelated;}
+  .avatar-preview img{width:64px; height:64px; object-fit:contain; image-rendering:pixelated;}
   canvas{display:none;}
   .recorrido-item{border:1px solid var(--line); border-radius:14px; padding:14px 16px; margin-bottom:12px; background:#FBF9F3;}
   .recorrido-item h3{margin:0 0 4px; font-family:'Fraunces',serif; font-size:17px;}
@@ -70,7 +70,8 @@
   .dest-chip{display:inline-flex; align-items:center; gap:5px; margin:0; font-size:13px; font-weight:600; color:var(--ink); background:#fff; border:1.5px solid var(--line); border-radius:100px; padding:4px 10px; cursor:pointer;}
   .persona-row{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--line); font-size:13.5px;}
   .persona-row:last-child{border-bottom:none;}
-  .persona-row img, .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
+  .persona-row .sin-foto{width:36px; height:36px; border-radius:50%; flex:none; background:var(--bg); border:1px solid var(--line); image-rendering:pixelated; object-fit:cover;}
+  .persona-row img{width:36px; height:36px; flex:none; object-fit:contain; image-rendering:pixelated;}
   .persona-row .sin-foto{display:flex; align-items:center; justify-content:center; font-weight:700; color:var(--ink-soft);}
   .persona-row .info{flex:1 1 150px; min-width:150px;}
   .persona-row .info small{display:block; color:var(--ink-soft); font-size:12px;}
@@ -332,7 +333,7 @@ function agregarFilaPersona(){
   row.innerHTML = `
     <input type="text" placeholder="Nombre o apodo" class="p-nombre">
     <input type="file" accept="image/*" class="p-foto">
-    <img class="p-preview" style="display:none; width:36px; height:36px; border-radius:50%; image-rendering:pixelated;">
+    <img class="p-preview" style="display:none; width:36px; height:36px; object-fit:contain; image-rendering:pixelated;">
     <button class="btn small secondary p-quitar">Quitar</button>`;
   bindFoto(row.querySelector(".p-foto"), row.querySelector(".p-preview"));
   row.querySelector(".p-quitar").addEventListener("click", () => row.remove());
