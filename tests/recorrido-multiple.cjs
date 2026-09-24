@@ -277,6 +277,29 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   check(insta.dialogos.some(m => m.includes("Abrí el link en Chrome o Safari")), "…y el botón de Google da el mismo aviso");
   await insta.context().close();
 
+  // Home con sesión: "Tu recorrido" arriba y la lista de activos sin repetirlo
+  const homeSin = await pagina(null);
+  await homeSin.goto(BASE + "/index.html");
+  await homeSin.waitForSelector("#recorridosActivos .recorrido-btn", { timeout: 10000 });
+  const ordenHome = await homeSin.evaluate(() => { const t = [...document.querySelectorAll(".landing-inner > *")]; return t.indexOf(document.getElementById("activosWrap")) < t.indexOf(document.querySelector(".cats-intro")); });
+  check(ordenHome, "home sin sesión: 'Recorridos activos' aparece arriba, antes de la foto");
+  check(await homeSin.evaluate(() => { const h = document.querySelector(".landing-marca"); return h.querySelector(".landing-icono") && Math.round(h.getBoundingClientRect().height) <= 50; }), "home: ícono nuevo a la izquierda del título, en una sola línea");
+  await homeSin.screenshot({ path: SHOTS + "/06-home-sin-sesion.png" });
+  await homeSin.context().close();
+  const homePam = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });
+  await homePam.goto(BASE + "/index.html");
+  await homePam.waitForSelector("#recorridosActivos .recorrido-btn", { timeout: 10000 });
+  await login(homePam);
+  await homePam.waitForSelector("#tuRecorrido .tu-recorrido", { timeout: 10000 });
+  const tarjeta = await homePam.textContent("#tuRecorrido .tu-recorrido");
+  check(tarjeta.includes("Prueba Octubre") && tarjeta.includes("Pam") && tarjeta.includes("Día 1 de 3") && tarjeta.includes("Ir →"), "home con sesión: tarjeta 'Tu recorrido · Pam — Prueba Octubre — Día 1 de 3 — Ir →'");
+  check(await homePam.isHidden("#activosWrap"), "home con sesión: la lista de activos no repite su recorrido (y se oculta si queda vacía)");
+  await homePam.screenshot({ path: SHOTS + "/07-home-tu-recorrido.png" });
+  await homePam.click("#tuRecorrido .tu-recorrido");
+  await homePam.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  check((await homePam.textContent("#appSession")).includes("Pam"), "'Ir →' lleva directo a su recorrido, ya adentro");
+  await homePam.context().close();
+
   // Posiciones en vivo
   await pam.waitForFunction(() => document.getElementById("standings").textContent.includes("Juan"), null, { timeout: 5000 });
   let tareas = await leerTareas(rid);
@@ -443,6 +466,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await home.goto(BASE + "/index.html");
   await home.waitForSelector("#recorridosPasados .recorrido-btn", { timeout: 10000 });
   check((await home.textContent("#recorridosPasados")).includes("Prueba Octubre"), "home: el recorrido figura en 'pasados'");
+  check(await home.isHidden("#activosWrap"), "home: sin recorridos activos, la sección no aparece");
   await home.waitForFunction(() => document.getElementById("comentariosFeedLanding").textContent.includes("Primera vez"), null, { timeout: 10000 });
   check(true, "home: el muro global muestra el comentario de Juan");
   check(!(await home.textContent("#comentariosFeedLanding")).includes("Milo comió todo"), "home: el comentario del recorrido no aparece en el muro global");
