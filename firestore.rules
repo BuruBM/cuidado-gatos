@@ -21,6 +21,16 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(pid)).data.get('uid', null) == request.auth.uid;
     }
 
+    // Un recorrido está abierto mientras está activo y no pasó su día de gracia (el día siguiente
+    // al último). Cierra a las 06:00 UTC del día después del de gracia = 03:00 en Argentina.
+    // Cerrado o archivado: los participantes solo pueden mirar; el admin puede todo.
+    function abierto(rid) {
+      let r = get(/databases/$(database)/documents/recorridos/$(rid)).data;
+      let f = r.get('fechaInicio', '');
+      return r.get('activo', true) == true
+        && (f == '' || request.time < timestamp.date(int(f.split('-')[0]), int(f.split('-')[1]), int(f.split('-')[2])) + duration.value((r.get('dias', 3) + 1) * 24 + 6, 'h'));
+    }
+
     // Solo las 7 tareas reales, en un día que exista dentro del recorrido
     function tareaValida(rid) {
       return request.resource.data.keys().hasOnly(['dia', 'key', 'pid', 'nombre', 'uid', 'creado'])
@@ -55,8 +65,14 @@ service cloud.firestore {
               && request.resource.data.uid == request.auth.uid
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'reclamado']))
           // Guardar tus propias preferencias (recordatorios, pop-ups vistos)
+          // Marcar avisos como vistos: siempre
           || (signedIn()
               && resource.data.get('uid', null) == request.auth.uid
+              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vioPopupGlobal', 'popupPersonal', 'vioCierre']))
+          // Recordatorios y "Terminé mis días": solo con el recorrido abierto
+          || (signedIn()
+              && resource.data.get('uid', null) == request.auth.uid
+              && abierto(rid)
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notif', 'vioPopupGlobal', 'popupPersonal', 'vioCierre', 'cierre', 'actualizado']));
       }
 
@@ -66,18 +82,20 @@ service cloud.firestore {
         allow read: if true;
         allow create: if isAdmin()
           || (soyParticipante(rid, request.resource.data.pid)
+              && abierto(rid)
               && tareaValida(rid)
               && request.resource.data.uid == request.auth.uid
               && tid == string(request.resource.data.dia) + '_' + request.resource.data.key);
         allow update: if isAdmin();
-        allow delete: if isAdmin() || soyParticipante(rid, resource.data.pid);
+        allow delete: if isAdmin() || (soyParticipante(rid, resource.data.pid) && abierto(rid));
       }
 
       match /comentarios/{cid} {
         allow read: if true;
-        allow create: if signedIn() && comentarioValido();
-        allow update: if comentarioPropio() && comentarioValido();
-        allow delete: if isAdmin() || comentarioPropio();
+        allow create: if signedIn() && comentarioValido() && (isAdmin() || abierto(rid));
+        allow update: if (isAdmin() && request.resource.data.mensaje is string)
+          || (comentarioPropio() && comentarioValido() && abierto(rid));
+        allow delete: if isAdmin() || (comentarioPropio() && abierto(rid));
       }
     }
 
@@ -85,7 +103,8 @@ service cloud.firestore {
     match /comentarios/{cid} {
       allow read: if true;
       allow create: if signedIn() && comentarioValido();
-      allow update: if comentarioPropio() && comentarioValido();
+      allow update: if (isAdmin() && request.resource.data.mensaje is string)
+        || (comentarioPropio() && comentarioValido());
       allow delete: if isAdmin() || comentarioPropio();
     }
 

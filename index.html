@@ -282,6 +282,10 @@
   .gate-persona-av img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated;}
   .gate-persona-nombre{flex:1; text-align:left;}
   .gate-persona-tomado{font-size:12px; font-weight:500; color:var(--ink-soft);}
+  .gate-persona.elegido{border-color:var(--ink);}
+  .gate-admin{background:var(--mustard-soft);}
+  .modo-admin-nota{background:var(--mustard-soft); border:1px solid var(--line); border-radius:14px; padding:11px 14px; font-size:13.5px; margin-bottom:12px;}
+  .session-line a{color:var(--ink-soft);}
   #appWrap{display:none;}
   .other-marker{cursor:default;}
   .otros-marcadores{position:absolute; inset:0; pointer-events:none;}
@@ -651,6 +655,7 @@
   </div>
 
   <div id="tareas" class="tareas-ancla"></div>
+  <div class="modo-admin-nota" id="modoAdminNota" style="display:none;">🔧 <b>Modo admin:</b> tocá cualquier tarea para elegir quién la hizo o destildarla. No hay límite de fechas.</div>
   <div class="day-tabs" id="dayTabs"></div>
   <div id="dayPanels"></div>
 
@@ -770,6 +775,7 @@
       <button class="comentario-tab active" data-muro="recorrido">Este recorrido</button>
       <button class="comentario-tab" data-muro="global">Muro global</button>
     </div>
+    <p class="login-hint" id="muroCerradoNota" style="display:none;">El recorrido terminó: el muro quedó de solo lectura.</p>
     <div class="comentario-form">
       <textarea id="comentarioTexto" placeholder="Escribí algo acá..."></textarea>
       <button class="btn small" id="comentarioBtn">Publicar</button>
@@ -800,6 +806,15 @@
     <h2>Un aviso</h2>
     <p>Si hoy te vas a ir muchas horas, o va a ser de noche, no te olvides de dejarles el gallito con alimento seco en el living (con la mitad o menos alcanza).</p>
     <button class="btn" id="gallitoClose">Entendido</button>
+  </div>
+</div>
+
+<div class="modal-overlay" id="elegirOverlay">
+  <div class="modal" style="text-align:left; width:100%;">
+    <h2 id="elegirTitulo" style="font-size:19px; text-align:center;">¿Quién la hizo?</h2>
+    <p style="text-align:center; margin-bottom:14px;">¿Quién hizo esta tarea?</p>
+    <div class="gate-personas" id="elegirLista"></div>
+    <div style="text-align:center; margin-top:14px;"><button class="btn secondary" id="elegirCancelar">Cancelar</button></div>
   </div>
 </div>
 
@@ -963,6 +978,7 @@ const DEFAULT_FACE = "data:image/svg+xml;base64," + btoa(`<svg xmlns="http://www
 
 const params = new URLSearchParams(window.location.search);
 const recorridoId = params.get("r");
+const modoAdminPedido = params.get("modo") === "admin";
 
 let recorrido = null;
 let usuario = null;
@@ -972,6 +988,7 @@ let participantes = {};   // pid -> datos del participante
 let tareas = {};          // "dia_key" -> { dia, key, pid, nombre, uid, creado }
 let TOTAL_DIAS = 3;
 let appIniciada = false;
+let modoAdmin = false;   // el admin ve y edita todo, sin límite de fechas
 let muroActivo = "recorrido";
 
 const DIAS_SEMANA = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
@@ -1004,6 +1021,8 @@ function toast(msg){
 // Día de hoy dentro del recorrido (1 = primer día). Sin fecha de inicio, 0 (nunca termina).
 function diaDeHoy(){ return diaDelRecorrido(recorrido); }
 function recorridoTerminado(){ return !!recorrido.fechaInicio && diaDeHoy() > TOTAL_DIAS; }
+// Cerrado: archivado o pasado el día de gracia. Los participantes solo pueden mirar.
+function recorridoCerrado(){ return recorrido.activo === false || (!!recorrido.fechaInicio && diaDeHoy() > TOTAL_DIAS + 1); }
 
 // ===== Puntos y % de victoria =====
 function puntosDe(pid){
@@ -1088,6 +1107,7 @@ async function resolverParticipante(){
     mostrarGate("Error", "No se pudo cargar la lista de cuidadores.");
     return;
   }
+  if(modoAdminPedido && esAdmin(usuario)){ entrarComoAdmin(); return; }
   const mio = Object.keys(participantes).find(pid => participantes[pid].uid === usuario.uid);
   if(mio){ entrar(mio); return; }
 
@@ -1103,6 +1123,13 @@ function renderPersonasGate(){
   const el = document.getElementById("gatePersonas");
   const pids = Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b)));
   el.innerHTML = "";
+  if(esAdmin(usuario)){
+    const adm = document.createElement("button");
+    adm.className = "gate-persona gate-admin";
+    adm.innerHTML = `<span class="gate-persona-av">🔧</span><span class="gate-persona-nombre">Entrar como admin<span class="gate-persona-tomado" style="display:block;">ver y editar todo</span></span>`;
+    adm.addEventListener("click", entrarComoAdmin);
+    el.appendChild(adm);
+  }
   if(pids.length === 0){
     gateError("Todavía no hay personas cargadas en este recorrido. Pedile a quien te invitó que te agregue.");
     return;
@@ -1140,6 +1167,15 @@ async function reclamar(pid){
 }
 
 document.getElementById("gateLoginBtn").addEventListener("click", loginGoogle);
+function entrarComoAdmin(){
+  modoAdmin = true;
+  participanteId = null;
+  participanteNombre = ((usuario.displayName || "Admin").split(" ")[0]) + " (admin)";
+  document.getElementById("gateWrap").style.display = "none";
+  document.getElementById("appWrap").style.display = "block";
+  startApp();
+}
+
 function entrar(pid){
   participanteId = pid;
   participanteNombre = nombreDe(pid);
@@ -1153,12 +1189,19 @@ function startApp(){
   appIniciada = true;
   document.getElementById("pageTitle").textContent = recorrido.nombre || "Cuidado de Milo y Zoe";
   document.getElementById("tagLine").textContent = `GUÍA DE ${TOTAL_DIAS} DÍA${TOTAL_DIAS>1?"S":""}`;
-  const face = avatarDe(participantes[participanteId]) || DEFAULT_FACE;
+  const yo = participantes[participanteId];
+  const face = (yo && avatarDe(yo)) || DEFAULT_FACE;
   ["avatarFaceImg","victoryFaceImg"].forEach(id => {
     document.getElementById(id).setAttribute("href", face);
     document.getElementById(id).setAttribute("xlink:href", face);
   });
-  document.getElementById("appSession").innerHTML = `Entraste como <b>${escapeHtml(participanteNombre)}</b> · <button id="appLogout">Salir</button> · ${botonTema()}`;
+  const base = `index.html?r=${recorridoId}`;
+  document.getElementById("appSession").innerHTML = modoAdmin
+    ? `🔧 <b>Modo admin</b> · <a href="${base}">Ver como participante</a> · <button id="appLogout">Salir</button> · ${botonTema()}`
+    : `Entraste como <b>${escapeHtml(participanteNombre)}</b> · <button id="appLogout">Salir</button>` + (esAdmin(usuario) ? ` · <a href="${base}&modo=admin">🔧 Modo admin</a>` : "") + ` · ${botonTema()}`;
+  document.getElementById("modoAdminNota").style.display = modoAdmin ? "block" : "none";
+  document.getElementById("avatarMarker").style.display = modoAdmin ? "none" : "";
+  document.getElementById("avisos").style.display = (modoAdmin || recorridoCerrado()) ? "none" : "";
   document.getElementById("appLogout").addEventListener("click", () => auth.signOut());
 
   renderDayTabs();
@@ -1192,6 +1235,7 @@ function startApp(){
 
 // ===== Pop-ups (bienvenida, mensajes puntuales del admin y cierre) =====
 async function checkPopups(){
+  if(modoAdmin) return;
   const data = participantes[participanteId] || {};
   try{
     if(recorrido.popupGlobal && !data.vioPopupGlobal){
@@ -1286,6 +1330,7 @@ function renderDayPanels(){
 
 // Se tilda solo hasta hoy, con un día de gracia al final para quien se olvidó de tildar el último día
 function estadoDia(d){
+  if(recorrido.activo === false) return "cerrado";
   if(!recorrido.fechaInicio) return "ok";
   const hoy = diaDeHoy();
   if(d > hoy) return "futuro";
@@ -1308,12 +1353,12 @@ function updateUI(){
     document.querySelectorAll(`.task[data-day="${d}"]`).forEach(el => {
       const key = el.getAttribute("data-key");
       const t = tareas[tareaId(d, key)];
-      const ajena = !!t && t.pid !== participanteId;
+      const ajena = !!t && t.pid !== participanteId && !modoAdmin;
       el.classList.toggle("checked", !!t);
       el.classList.toggle("locked", ajena);
       const by = el.querySelector(".task-by");
       by.style.display = t ? "inline-block" : "none";
-      by.textContent = t ? "✓ " + (ajena ? nombreDe(t.pid) : "Vos") : "";
+      by.textContent = t ? "✓ " + ((ajena || modoAdmin) ? nombreDe(t.pid) : "Vos") : "";
       if(key === "piedras") el.querySelector(".task-detail").textContent = detallePiedras(d);
     });
     document.getElementById("panel-"+d).classList.toggle("futuro", estadoDia(d) === "futuro");
@@ -1334,6 +1379,7 @@ function attachTaskHandlers(){
       const key = el.getAttribute("data-key");
       const ref = recorridoRef().collection("tareas").doc(tareaId(dia, key));
       const t = tareas[tareaId(dia, key)];
+      if(modoAdmin){ await editarComoAdmin(el, ref, dia, key, t); return; }
       // Lo que tildó otra persona no se toca: ni destildar ni volver a tildar
       if(t && t.pid !== participanteId){ toast(`Esto ya lo hizo ${nombreDe(t.pid)}.`); return; }
       const estado = estadoDia(dia);
@@ -1361,6 +1407,44 @@ function attachTaskHandlers(){
       delete el.dataset.busy;
     });
   });
+}
+
+// ===== Modo admin: elegir quién hizo cada tarea (o destildarla), sin límite de fechas =====
+function elegirQuien(titulo, actual){
+  return new Promise(resolve => {
+    const overlay = document.getElementById("elegirOverlay");
+    document.getElementById("elegirTitulo").textContent = titulo;
+    const lista = document.getElementById("elegirLista");
+    lista.innerHTML = "";
+    const opcion = (valor, texto, marcado) => {
+      const b = document.createElement("button");
+      b.className = "gate-persona" + (marcado ? " elegido" : "");
+      b.innerHTML = texto;
+      b.addEventListener("click", () => { overlay.classList.remove("show"); resolve(valor); });
+      lista.appendChild(b);
+    };
+    const abrevs = abreviaturas();
+    Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b))).forEach(pid =>
+      opcion(pid, `<span class="gate-persona-av" style="background:${colorDe(pid)}; color:#fff;">${circuloDe(pid, abrevs)}</span><span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${pid === actual ? "✓" : ""}`, pid === actual));
+    opcion("", `<span class="gate-persona-av">✕</span><span class="gate-persona-nombre">Nadie (destildar)</span>${actual ? "" : "✓"}`, !actual);
+    document.getElementById("elegirCancelar").onclick = () => { overlay.classList.remove("show"); resolve(null); };
+    overlay.classList.add("show");
+  });
+}
+async function editarComoAdmin(el, ref, dia, key, t){
+  const tarea = tareasDelDia().find(x => x.key === key);
+  const quien = await elegirQuien(`Día ${dia} · ${tarea.group === "General" ? "" : tarea.group + " · "}${tarea.title}`, t ? t.pid : null);
+  if(quien === null || (t && t.pid === quien) || (!t && quien === "")) return;
+  el.dataset.busy = "1";
+  try{
+    if(quien === "") await ref.delete();
+    else await ref.set({ dia, key, pid: quien, nombre: nombreDe(quien), uid: participantes[quien].uid || null, creado: t ? t.creado : Date.now() });
+    toast(quien === "" ? "Tarea destildada" : `Tarea asignada a ${nombreDe(quien)}`);
+  }catch(e){
+    console.error(e);
+    toast("No se pudo guardar el cambio.");
+  }
+  delete el.dataset.busy;
 }
 
 // ===== Camino a la fortuna: avanza más quien más tareas hace =====
@@ -1411,12 +1495,16 @@ function updateJourney(){
   const puntos = puntosDe(participanteId);
   placeAtFraction(document.getElementById("avatarMarker"), fraccionCamino(participanteId));
   const lista = ranking();
+  if(modoAdmin){
+    document.getElementById("journeyCaption").innerHTML = `🔧 modo admin — <b>${Object.keys(tareas).length}</b> tareas hechas entre todos`;
+  } else {
   const pos = lista.findIndex(p => p.pid === participanteId) + 1;
   let msg = "recién arrancando";
   if(fraccionCamino(participanteId) >= 1) msg = "¡llegaste a la galleta! 🥠";
   else if(puntos > 0) msg = "en marcha";
   document.getElementById("journeyCaption").innerHTML =
     `<b>${puntos}</b> punto${puntos===1?"":"s"}` + (lista.length > 1 ? ` · puesto <b>${pos}</b> de ${lista.length}` : "") + ` — ${msg}`;
+  }
 
   // Los demás: círculos en HTML (mismo tamaño en cualquier pantalla); si coinciden en el mismo punto, se acomodan al lado
   const capa = document.getElementById("otrosMarcadores");
@@ -1474,6 +1562,7 @@ function mensajeCierre(pct){
 function renderCierre(){
   const card = document.getElementById("cierreCard");
   const terminado = recorridoTerminado();
+  if(modoAdmin){ card.style.display = "none"; document.getElementById("terminarCard").style.display = "none"; return; }
   document.getElementById("terminarCard").style.display =
     (!terminado && !yaCerro(participanteId) && puntosDe(participanteId) > 0) ? "block" : "none";
   if(!terminado && !yaCerro(participanteId)){ card.style.display = "none"; return; }
@@ -1693,7 +1782,8 @@ function renderComentariosEn(elId, docsArr, recargar){
     body.appendChild(p);
     body.appendChild(meta);
 
-    if(usuario && c.uid === usuario.uid){
+    const muroCerrado = muroActivo === "recorrido" && recorridoId && recorrido && recorridoCerrado() && elId === "comentariosFeed";
+    if(usuario && (esAdmin(usuario) || (c.uid === usuario.uid && !muroCerrado))){
       const acciones = document.createElement("span");
       acciones.className = "comentario-acciones";
       const editar = document.createElement("button");
@@ -1740,6 +1830,9 @@ function muroRef(){
   return muroActivo === "global" ? db.collection("comentarios") : recorridoRef().collection("comentarios");
 }
 async function loadComentarios(){
+  const soloLectura = muroActivo === "recorrido" && recorridoCerrado() && !esAdmin(usuario);
+  document.querySelector("#muro .comentario-form").style.display = soloLectura ? "none" : "";
+  document.getElementById("muroCerradoNota").style.display = soloLectura ? "block" : "none";
   try{
     renderComentariosEn("comentariosFeed", await fetchComentarios(muroRef()), loadComentarios);
   }catch(e){

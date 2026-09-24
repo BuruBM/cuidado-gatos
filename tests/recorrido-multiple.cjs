@@ -30,7 +30,7 @@ async function pagina(cuenta, opts = {}){
   page.dialogos = [];
   page.on("pageerror", e => errores.push(page.nombre + ": " + e.message));
   page.on("console", m => { if(m.type() === "error" && !/PERMISSION_DENIED|permission|ERR_FAILED|Failed to load resource/i.test(m.text())) errores.push(page.nombre + ": " + m.text()); });
-  page.on("dialog", d => { page.dialogos.push(d.message()); d.type() === "prompt" ? d.accept("ELIMINAR") : d.accept(); });
+  page.on("dialog", d => { page.dialogos.push(d.message()); d.type() === "prompt" ? d.accept(page.respuestaPrompt || "ELIMINAR") : d.accept(); });
   await page.route(/gstatic\.com\/firebasejs\/.*\/(firebase-[a-z-]+\.js)/, route =>
     route.fulfill({ contentType: "application/javascript", body: fs.readFileSync(path.join(__dirname, "node_modules/firebase/" + route.request().url().split("/").pop())) }));
   await page.route(/fonts\.googleapis|fonts\.gstatic/, r => r.abort());
@@ -383,6 +383,60 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await tildar(lau, 3, "zoe_seco_1");
   check((await toast(lau)).includes("ya terminó"), "después del día de gracia no se puede tildar");
 
+  // Participantes en un recorrido cerrado: solo mirar
+  check(await lau.isHidden("#muro .comentario-form") && await lau.isVisible("#muroCerradoNota"), "recorrido cerrado: el muro queda de solo lectura");
+  check(await lau.isHidden("#avisos"), "recorrido cerrado: no se muestran los recordatorios");
+  await pam.reload(); await pam.waitForSelector("#appWrap", { state:"visible", timeout: 10000 }); await cerrarModales(pam);
+  await pam.waitForFunction(() => document.getElementById("comentariosFeed").textContent.includes("Milo comió"), null, { timeout: 10000 });
+  check(!(await pam.textContent("#comentariosFeed")).includes("Editar"), "recorrido cerrado: Pam ya no puede editar su comentario");
+  await moverFecha(rid, -5);   // día 6: las reglas ya cerraron seguro (cierran a las 03:00 del día siguiente al de gracia)
+  const hackCerrado = await lau.evaluate(() => db.collection("recorridos").doc(recorridoId).collection("tareas").doc("3_milo_seco_2")
+    .set({ dia:3, key:"milo_seco_2", pid:"lauti", nombre:"Lauti", uid:auth.currentUser.uid, creado:1 }).then(() => "ok", e => e.code));
+  check(hackCerrado === "permission-denied", "recorrido cerrado: tildar por consola lo bloquean las reglas");
+
+  // Modo admin
+  console.log("\n== Modo admin en el recorrido cerrado ==");
+  await adm.goto(urlDe());
+  await adm.waitForSelector("#gatePersonas .gate-admin", { timeout: 10000 });
+  check(true, "el admin ve 'Entrar como admin' en la lista");
+  await adm.click("#gatePersonas .gate-admin");
+  await adm.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  check(await adm.isVisible("#modoAdminNota") && await adm.isHidden("#avatarMarker"), "modo admin: nota visible y sin muñequito propio");
+  await irADia(adm, 3); await adm.click('#panel-3 .task[data-key="milo_seco_1"]');
+  await adm.waitForSelector("#elegirOverlay.show"); await adm.waitForTimeout(600);
+  await adm.screenshot({ path: SHOTS + "/16-admin-elegir.png" });
+  await adm.locator("#elegirLista .gate-persona", { hasText: "Juan" }).click();
+  await esperarTarea(adm, 3, "milo_seco_1", "Juan"); await guardado(adm);
+  check((await leerTareas(rid))["3_milo_seco_1"].pid === "juan", "admin tilda una tarea del día 3 a nombre de Juan (recorrido cerrado)");
+  await irADia(adm, 1); await adm.click('#panel-1 .task[data-key="milo_seco_1"]');
+  await adm.locator("#elegirLista .gate-persona", { hasText: "Lauti" }).click();
+  await esperarTarea(adm, 1, "milo_seco_1", "Lauti"); await guardado(adm);
+  check((await leerTareas(rid))["1_milo_seco_1"].pid === "lauti", "admin cambia quién hizo una tarea (de Pam a Lauti)");
+  await esperarTarea(pam, 1, "milo_seco_1", "Lauti");
+  check(true, "Pam ve el cambio en vivo");
+  await adm.click('#panel-1 .task[data-key="milo_seco_1"]');
+  await adm.locator("#elegirLista .gate-persona", { hasText: "Nadie" }).click();
+  await adm.waitForFunction(() => !document.querySelector('#panel-1 .task[data-key="milo_seco_1"]').classList.contains("checked"), null, { timeout: 5000 }); await guardado(adm);
+  check(!(await leerTareas(rid))["1_milo_seco_1"], "admin destilda una tarea");
+  await adm.click('#panel-1 .task[data-key="milo_seco_1"]');
+  await adm.click("#elegirCancelar");
+  check(!(await leerTareas(rid))["1_milo_seco_1"], "Cancelar no cambia nada");
+  await adm.locator('.app-nav a[href="#muro"]').click();
+  await adm.waitForFunction(() => document.getElementById("comentariosFeed").textContent.includes("Milo comió"), null, { timeout: 10000 });
+  check(await adm.isVisible("#muro .comentario-form"), "modo admin: puede comentar en el recorrido cerrado");
+  await adm.click("#comentariosFeed .comentario-acciones button:has-text('Editar')");
+  await adm.fill("#comentariosFeed .comentario-edit textarea", "Milo comió todo hoy (editado por admin)");
+  await adm.click("#comentariosFeed .comentario-edit button:has-text('Guardar')");
+  await adm.waitForFunction(() => document.getElementById("comentariosFeed").textContent.includes("editado por admin"), null, { timeout: 5000 });
+  check(true, "modo admin: edita el comentario de Pam");
+  // Renombrar desde el panel
+  await adm.goto(BASE + "/admin.html"); await adm.waitForSelector(".persona-row", { timeout: 10000 });
+  adm.respuestaPrompt = "Sofía";
+  await adm.locator(".persona-row", { hasText: "Sofi" }).locator('[data-p="nombre"]').click();
+  await adm.waitForFunction(() => document.querySelector(".personas-list").textContent.includes("Sofía"), null, { timeout: 5000 });
+  await pam.waitForFunction(() => document.getElementById("standings").textContent.includes("Sofía"), null, { timeout: 10000 });
+  check(true, "admin renombra a Sofi como Sofía y todos lo ven");
+
   // Home y ranking
   console.log("\n== Home y ranking ==");
   const home = await pagina(null, { ancho: 360 });
@@ -398,14 +452,14 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await lb.goto(BASE + "/leaderboard.html"); await lb.waitForSelector(".fila");
   tareas = await leerTareas(rid);
   const txtLb = await lb.textContent("#lista");
-  for(const pid of ["pam","lauti","juan","sofi"]){
+  for(const pid of ["pam","lauti","juan","sofi"]){  // puntos después de los cambios del admin
     const pp = puntosOraculo(tareas, pid);
     check(pp === 0 || txtLb.includes(pp + " pts"), `ranking: ${pid} con ${pp} pts`);
   }
   await sinDesborde(lb, "ranking");
   await pam.setViewportSize({ width: 360, height: 800 }); await sinDesborde(pam, "recorrido");
   await adm.setViewportSize({ width: 360, height: 800 }); await sinDesborde(adm, "admin");
-  const filaSofi = await adm.locator(".persona-row", { hasText: "Sofi" }).textContent();
+  const filaSofi = await adm.locator(".persona-row", { hasText: "Sofía" }).textContent();
   check(filaSofi.includes(`🏁 ${pctSofi}%`), "admin ve el % congelado de Sofi con 🏁");
 
   // ================= MODO OSCURO =================
