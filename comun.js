@@ -209,12 +209,12 @@ function avatarDe(p){
 const COMBOS_AVATAR = [
   { camisa:"#3E6C64", pantalon:"#C79A2E" },   // verde / mostaza (el del camino)
   { camisa:"#DD8A3D", pantalon:"#355F58" },   // naranja / verde oscuro
-  { camisa:"#A65136", pantalon:"#C79A2E" },   // terracota / mostaza
+  { camisa:"#A65136", pantalon:"#E3B04B" },   // terracota / amarillo
   { camisa:"#3E9C8E", pantalon:"#A65136" },   // verde agua / terracota
-  { camisa:"#C79A2E", pantalon:"#3E6C64" },   // mostaza / verde
-  { camisa:"#5E7A3D", pantalon:"#DD8A3D" },   // oliva / naranja
-  { camisa:"#355F58", pantalon:"#E3B04B" },   // verde oscuro / amarillo
-  { camisa:"#D9805F", pantalon:"#3E9C8E" }    // coral / verde agua
+  { camisa:"#C79A2E", pantalon:"#6B4E3D" },   // mostaza / marrón
+  { camisa:"#7B6A9E", pantalon:"#C79A2E" },   // violeta / mostaza
+  { camisa:"#C96F7E", pantalon:"#355F58" },   // rosa / verde oscuro
+  { camisa:"#5B82A6", pantalon:"#DD8A3D" }    // azul / naranja
 ];
 function comboAvatar(clave){
   const txt = normalizarNombre(clave) || "x";
@@ -223,7 +223,8 @@ function comboAvatar(clave){
   return COMBOS_AVATAR[h % COMBOS_AVATAR.length];
 }
 // Filas del cuerpo, 8 columnas de 2.6 de ancho: C = camisa, P = pantalón, Z = zapatos
-const CUERPO_AVATAR = ["CCCCCCCC", "CCCCCCCC", "CCCCCCCC", "CCPPPPCC", "PPPPPPPP", "PP....PP", "ZZ....ZZ"];
+// La muesca a los dos lados del torso (filas 2 y 3) separa los brazos
+const CUERPO_AVATAR = ["CCCCCCCC", ".CCCCCC.", ".CCCCCC.", "CCPPPPCC", "PPPPPPPP", "PP....PP", "ZZ....ZZ"];
 function cuerpoAvatarSVG(combo){
   const color = { C: combo.camisa, P: combo.pantalon, Z: "#4A3728" };
   let r = "";
