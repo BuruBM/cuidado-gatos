@@ -308,7 +308,9 @@
   .landing-icono{width:84px; height:40px; flex:none; overflow:visible;}
   .landing-header p{color:var(--ink-soft); font-size:15px; margin:0;}
   .cats-intro{display:flex; gap:10px; margin-bottom:8px;}
-  .cats-intro img{width:50%; height:160px; object-fit:cover; object-position:50% 62%; border-radius:18px; box-shadow:var(--shadow);}
+  .cats-intro img{width:50%; height:160px; object-fit:cover; border-radius:18px; box-shadow:var(--shadow);}
+  /* En escritorio la foto es más ancha y el recorte queda justo abajo: se corre un poco */
+  @media (min-width:600px){ .cats-intro img{object-position:50% 62%;} }
   .landing-section-title{display:flex; align-items:center; gap:10px; font-family:'Fraunces',serif; font-weight:600; font-size:21px; margin:30px 0 12px;}
   .landing-section-title::before{content:""; width:10px; height:10px; border-radius:50%; background:var(--sec, var(--mustard)); flex:none;}
 
@@ -507,7 +509,7 @@
       <ul>
         <li>Porciones (alimento seco): de a poco, apenas cubriendo la base del plato. Se puede volver a servir cuando piden, pero no si solo pide Zoe.</li>
         <li>Quedate en la cocina un rato mientras comen: si te vas, Milo se distrae y se va, y Zoe le come la comida a él.</li>
-        <li>Si te vas muchas horas durante el día: dejales el gallito con alimento seco en el living. Si dormís en casa, a la noche podés usarlo también para que no maúllen. No hace falta llenarlo.</li>
+        <li>Si te vas muchas horas durante el día: dejales el gallito con alimento seco en el living. Si dormís en casa, a la noche también podés usarlo para que no maúllen. No hace falta llenarlo.</li>
         <li>Agua: hay en la cocina y en el cuarto — chequear siempre que esté limpia y disponible.</li>
       </ul>
     </div>
@@ -730,7 +732,7 @@
       <div><b>Quedate en la cocina un rato mientras comen:</b> Si te vas, Milo se distrae y se va sin terminar, y Zoe le come la comida a él.</div>
     </div>
     <div class="standing-note" style="background:var(--mustard-soft); border-color:#E4CE93;">🥣
-      <div><b>Si te vas muchas horas durante el día:</b> Dejales el gallito (dispenser) con alimento seco en el living, para que no se queden sin comer. Si dormís en casa, a la noche podés usarlo también para que no maúllen. No hace falta llenarlo — con la mitad o menos alcanza.</div>
+      <div><b>Si te vas muchas horas durante el día:</b> Dejales el gallito (dispenser) con alimento seco en el living, para que no se queden sin comer. Si dormís en casa, a la noche también podés usarlo para que no maúllen. No hace falta llenarlo — con la mitad o menos alcanza.</div>
     </div>
     <div class="standing-note" style="background:var(--teal-soft); border-color:#BCD2CB;">💧
       <div><b>Agua:</b> Hay en la cocina y en el cuarto — chequear siempre que esté limpia y disponible.</div>
