@@ -7,7 +7,7 @@ fs.rmSync(SHOTS, { recursive: true, force: true }); fs.mkdirSync(SHOTS, { recurs
 const { initializeTestEnvironment } = require("@firebase/rules-unit-testing");
 const { doc, setDoc, getDocs, collection } = require("firebase/firestore");
 
-const tipos = { html:"text/html; charset=utf-8", js:"application/javascript", json:"application/json", png:"image/png" };
+const tipos = { html:"text/html; charset=utf-8", js:"application/javascript", json:"application/json", png:"image/png", css:"text/css" };
 const server = http.createServer((req, res) => {
   const f = path.join(REPO, decodeURIComponent(req.url.split("?")[0]));
   if(!fs.existsSync(f) || fs.statSync(f).isDirectory()){ res.writeHead(404); return res.end(); }
@@ -24,13 +24,13 @@ const check = (cond, msg) => { if(cond) oks++; else fallas++; console.log((cond 
 let browser, env;
 async function pagina(cuenta, opts = {}){
   const ctx = await browser.newContext({ viewport: { width: opts.ancho || 400, height: 860 }, serviceWorkers: "block",
-    userAgent: opts.ua, permissions: opts.permisos || [] });
+    userAgent: opts.ua, permissions: opts.permisos || [], colorScheme: opts.esquema || "light" });
   const page = await ctx.newPage();
   page.nombre = (cuenta && cuenta.name) || "anon";
   page.dialogos = [];
   page.on("pageerror", e => errores.push(page.nombre + ": " + e.message));
   page.on("console", m => { if(m.type() === "error" && !/PERMISSION_DENIED|permission|ERR_FAILED|Failed to load resource/i.test(m.text())) errores.push(page.nombre + ": " + m.text()); });
-  page.on("dialog", d => { page.dialogos.push(d.message()); d.type() === "prompt" ? d.accept("ELIMINAR") : d.accept(); });
+  page.on("dialog", d => { page.dialogos.push(d.message()); d.type() === "prompt" ? d.accept(page.respuestaPrompt || "ELIMINAR") : d.accept(); });
   await page.route(/gstatic\.com\/firebasejs\/.*\/(firebase-[a-z-]+\.js)/, route =>
     route.fulfill({ contentType: "application/javascript", body: fs.readFileSync(path.join(__dirname, "node_modules/firebase/" + route.request().url().split("/").pop())) }));
   await page.route(/fonts\.googleapis|fonts\.gstatic/, r => r.abort());
@@ -45,6 +45,11 @@ window.__login = (c) => auth.signInWithCredential(firebase.auth.GoogleAuthProvid
   return page;
 }
 const login = (page) => page.evaluate(c => window.__login(c), page.cuenta);
+async function elegir(page, nombre){
+  await page.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
+  await page.locator("#gatePersonas .gate-persona", { hasText: nombre }).first().click();
+  await page.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+}
 const cerrarModales = (page) => page.evaluate(() => document.querySelectorAll(".modal-overlay.show").forEach(m => m.classList.remove("show")));
 async function irADia(page, d){ await page.click(`.day-tab[data-day="${d}"]`); }
 async function tildar(page, d, key){ await irADia(page, d); await page.click(`#panel-${d} .task[data-key="${key}"]`); }
@@ -138,37 +143,35 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await pam.screenshot({ path: SHOTS + "/01-entrada.png" });
 
   // Pamela → "Pam"
-  await login(pam); await pam.waitForSelector("#gateNameInput", { state:"visible" });
-  check((await pam.inputValue("#gateNameInput")) === "Pamela", "sugiere el nombre de Google (Pamela)");
-  await pam.click("#gateEnterBtn");
-  await pam.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check(pam.dialogos.some(m => m.includes("¿Sos Pam?")), "Pamela se vincula como Pam (apodo)");
+  await login(pam);
+  await pam.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
+  const botones = await pam.$$eval("#gatePersonas .gate-persona-nombre", els => els.map(e => e.textContent.trim()));
+  check(botones.length === 4 && ["Juan","Lauti","Pam","Sofi"].every(n => botones.some(b => b.startsWith(n))), "'¿Quién sos?' muestra las 4 personas: " + botones.join(", "));
+  check(!(await pam.textContent("#gateSubtitle")).includes("Pamela"), "no asume quién sos por el nombre de Google");
+  await pam.screenshot({ path: SHOTS + "/01b-quien-sos.png" });
+  await elegir(pam, "Pam");
+  check(pam.dialogos.some(m => m.includes("¿Sos Pam?") && m.includes("pame@x.com")), "Pamela elige 'Pam' y confirma con su mail");
   await pam.waitForSelector("#avisoOverlay.show");
   check((await pam.textContent("#avisoTexto")).includes("Gracias por venir"), "Pam ve el mensaje de bienvenida");
   await pam.click("#avisoClose");
 
   // Lautaro → "Lauti"
-  await login(lau); await lau.waitForSelector("#gateNameInput", { state:"visible" });
-  await lau.click("#gateEnterBtn");
-  await lau.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check(lau.dialogos.some(m => m.includes("¿Sos Lauti?")), "Lautaro se vincula como Lauti");
+  await login(lau);
+  await elegir(lau, "Lauti");
+  check(lau.dialogos.some(m => m.includes("¿Sos Lauti?")), "Lautaro elige 'Lauti'");
   await lau.click("#avisoClose");
   const cara = await lau.getAttribute("#avatarFaceImg", "href");
   check(cara && cara.startsWith("data:image/png"), "Lauti usa la foto pixelada que cargó el admin");
 
-  // Juan: sin nombre en Google, prueba con 2 letras
-  await login(jua); await jua.waitForSelector("#gateNameInput", { state:"visible" });
-  check((await jua.inputValue("#gateNameInput")) === "", "Juan no tiene nombre en Google: campo vacío");
-  await jua.fill("#gateNameInput", "Ju"); await jua.click("#gateEnterBtn");
-  check((await jua.textContent("#gateError")).includes("al menos 3 letras"), "pide al menos 3 letras");
-  await jua.fill("#gateNameInput", "Pam"); await jua.click("#gateEnterBtn");
-  check((await jua.textContent("#gateError")).includes("vinculado a otra cuenta"), "no puede tomar el nombre de Pam");
-  await jua.fill("#gateNameInput", "Carlos"); await jua.click("#gateEnterBtn");
-  check((await jua.textContent("#gateError")).includes("No estás en la lista"), "un nombre que no está en la lista no entra");
-  await jua.fill("#gateNameInput", "juan"); await jua.click("#gateEnterBtn");
-  await jua.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  // Juan: el nombre de Pam ya está tomado
+  await login(jua);
+  await jua.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
+  check(await jua.locator("#gatePersonas .gate-persona", { hasText: "Pam" }).isDisabled(), "Juan ve 'Pam' deshabilitado (ya entró)");
+  check(await jua.locator("#gatePersonas .gate-persona", { hasText: "Lauti" }).isDisabled(), "…y 'Lauti' también");
+  check((await jua.textContent("#gateError")).includes("¿No estás en la lista?"), "explica qué hacer si no está en la lista");
+  await elegir(jua, "Juan");
   await jua.click("#avisoClose");
-  check(true, "Juan entra escribiendo 'juan' en minúscula");
+  check(true, "Juan entra eligiendo su nombre");
 
   // Día futuro bloqueado
   await tildar(pam, 2, "milo_seco_1");
@@ -258,7 +261,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   check(!(await leerParticipantes(rid)).lauti.notif, "Lauti no tiene recordatorios (son opcionales)");
 
   // Mismo Google en otro dispositivo entra directo
-  const pam2 = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });
+  const pam2 = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });  // mismo Google
   await pam2.goto(urlDe()); await pam2.waitForSelector("#gateLoginBtn", { state:"visible" }); await login(pam2);
   await pam2.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
   check((await pam2.textContent("#appSession")).includes("Pam"), "Pam en un 2do dispositivo entra directo, sin volver a escribir el nombre");
@@ -281,18 +284,36 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   for(const [pid, nom] of [["pam","Pam"],["lauti","Lauti"],["juan","Juan"]]){
     check(txtPos.includes(`${puntosOraculo(tareas, pid)} pts`), `posiciones: ${nom} tiene ${puntosOraculo(tareas, pid)} pts`);
   }
+  await pam.waitForFunction(() => document.querySelectorAll("#otrosMarcadores .otro-marcador").length === 2, null, { timeout: 5000 });
+  const marcadores = await pam.$$eval("#otrosMarcadores .otro-marcador", els => els.map(e => ({ t: e.textContent.trim(), img: !!e.querySelector("img"), w: e.getBoundingClientRect().width })));
+  check(marcadores.every(m => m.w >= 29), "marcadores de los demás de 30px (" + marcadores.map(m => m.w).join(", ") + ")");
+  check(marcadores.some(m => m.img) && marcadores.some(m => m.t === "J"), "Lauti aparece con su foto y Juan con 'J'");
+  const abrevs = await pam.evaluate(() => {
+    const guardado = participantes;
+    participantes = { a:{nombre:"Pam"}, b:{nombre:"Pedro"}, c:{nombre:"Juan"}, d:{nombre:"Juana"}, e:{nombre:"Sofi"} };
+    const r = abreviaturas(); participantes = guardado; return r;
+  });
+  check(abrevs.a === "Pa" && abrevs.b === "Pe" && abrevs.c === "Jn" && abrevs.d === "Ja" && abrevs.e === "S", "iniciales sin repetir: Pam=Pa, Pedro=Pe, Juan=Jn, Juana=Ja, Sofi=S");
+  const orden = await pam.evaluate(() => {
+    const pos = id => [...document.querySelectorAll("#appWrap *")].indexOf(document.getElementById(id));
+    return pos("dayTabs") < pos("guia") && pos("guia") < pos("avisos") && pos("avisos") < pos("muro");
+  });
+  check(orden, "orden de la página: tareas → guía → recordatorios → muro");
+  check(!(await pam.evaluate(() => [...document.querySelectorAll("#guia details")].some(d => d.open))), "la guía arranca plegada");
+  await pam.click('.app-nav a[href="#muro"]'); await pam.waitForTimeout(1200);
+  check(await pam.evaluate(() => { const r = document.getElementById("muro").getBoundingClientRect(); return r.top >= -5 && r.top < innerHeight - 100; }), "el acceso rápido '💬 Muro' lleva al muro");
+  await pam.click('.app-nav a[href="#tareas"]').catch(() => {}); await pam.evaluate(() => window.scrollTo(0, 0));
   await cerrarModales(pam);
   await pam.evaluate(() => window.scrollTo(0, 0));
   await pam.screenshot({ path: SHOTS + "/02-dia1-pam.png", fullPage: true });
+  await pam.screenshot({ path: SHOTS + "/02b-dia1-pam-arriba.png" });
 
   // Admin libera a Juan (se equivocó de cuenta) y Juan vuelve a entrar
   const filaJuan = adm.locator(".persona-row", { hasText: "Juan" });
   await filaJuan.locator('[data-p="liberar"]').click();
   await adm.waitForFunction(() => [...document.querySelectorAll(".persona-row")].find(r => r.textContent.includes("Juan")).textContent.includes("sin vincular"), null, { timeout: 5000 });
   await jua.reload();
-  await jua.waitForSelector("#gateNameInput", { state:"visible", timeout: 10000 });
-  await jua.fill("#gateNameInput", "Juan"); await jua.click("#gateEnterBtn");
-  await jua.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  await elegir(jua, "Juan");
   await esperarTarea(jua, 1, "zoe_humedo", "Vos");
   check(true, "admin libera a Juan, Juan se vuelve a vincular y conserva sus tareas");
 
@@ -301,10 +322,8 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await moverFecha(rid, -1);
   const sof = await pagina({ sub:"uSof", email:"sofi@x.com", email_verified:true, name:"Sofía Ruiz" });
   await sof.goto(urlDe()); await sof.waitForSelector("#gateLoginBtn", { state:"visible" }); await login(sof);
-  await sof.waitForSelector("#gateNameInput", { state:"visible" });
-  await sof.click("#gateEnterBtn");   // "Sofía" → "Sofi"
-  await sof.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check(sof.dialogos.some(m => m.includes("¿Sos Sofi?")), "Sofía (con tilde) se vincula como Sofi");
+  await elegir(sof, "Sofi");
+  check(sof.dialogos.some(m => m.includes("¿Sos Sofi?")), "Sofía elige 'Sofi'");
   check((await sof.getAttribute(".day-tab.active", "data-day")) === "2", "Sofi abre directo en el día de hoy (día 2)");
   await sof.waitForSelector("#avisoOverlay.show");
   check((await sof.textContent("#avisoTexto")).includes("Gracias por venir"), "Sofi ve primero la bienvenida…");
@@ -364,6 +383,60 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await tildar(lau, 3, "zoe_seco_1");
   check((await toast(lau)).includes("ya terminó"), "después del día de gracia no se puede tildar");
 
+  // Participantes en un recorrido cerrado: solo mirar
+  check(await lau.isHidden("#muro .comentario-form") && await lau.isVisible("#muroCerradoNota"), "recorrido cerrado: el muro queda de solo lectura");
+  check(await lau.isHidden("#avisos"), "recorrido cerrado: no se muestran los recordatorios");
+  await pam.reload(); await pam.waitForSelector("#appWrap", { state:"visible", timeout: 10000 }); await cerrarModales(pam);
+  await pam.waitForFunction(() => document.getElementById("comentariosFeed").textContent.includes("Milo comió"), null, { timeout: 10000 });
+  check(!(await pam.textContent("#comentariosFeed")).includes("Editar"), "recorrido cerrado: Pam ya no puede editar su comentario");
+  await moverFecha(rid, -5);   // día 6: las reglas ya cerraron seguro (cierran a las 03:00 del día siguiente al de gracia)
+  const hackCerrado = await lau.evaluate(() => db.collection("recorridos").doc(recorridoId).collection("tareas").doc("3_milo_seco_2")
+    .set({ dia:3, key:"milo_seco_2", pid:"lauti", nombre:"Lauti", uid:auth.currentUser.uid, creado:1 }).then(() => "ok", e => e.code));
+  check(hackCerrado === "permission-denied", "recorrido cerrado: tildar por consola lo bloquean las reglas");
+
+  // Modo admin
+  console.log("\n== Modo admin en el recorrido cerrado ==");
+  await adm.goto(urlDe());
+  await adm.waitForSelector("#gatePersonas .gate-admin", { timeout: 10000 });
+  check(true, "el admin ve 'Entrar como admin' en la lista");
+  await adm.click("#gatePersonas .gate-admin");
+  await adm.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  check(await adm.isVisible("#modoAdminNota") && await adm.isHidden("#avatarMarker"), "modo admin: nota visible y sin muñequito propio");
+  await irADia(adm, 3); await adm.click('#panel-3 .task[data-key="milo_seco_1"]');
+  await adm.waitForSelector("#elegirOverlay.show"); await adm.waitForTimeout(600);
+  await adm.screenshot({ path: SHOTS + "/16-admin-elegir.png" });
+  await adm.locator("#elegirLista .gate-persona", { hasText: "Juan" }).click();
+  await esperarTarea(adm, 3, "milo_seco_1", "Juan"); await guardado(adm);
+  check((await leerTareas(rid))["3_milo_seco_1"].pid === "juan", "admin tilda una tarea del día 3 a nombre de Juan (recorrido cerrado)");
+  await irADia(adm, 1); await adm.click('#panel-1 .task[data-key="milo_seco_1"]');
+  await adm.locator("#elegirLista .gate-persona", { hasText: "Lauti" }).click();
+  await esperarTarea(adm, 1, "milo_seco_1", "Lauti"); await guardado(adm);
+  check((await leerTareas(rid))["1_milo_seco_1"].pid === "lauti", "admin cambia quién hizo una tarea (de Pam a Lauti)");
+  await esperarTarea(pam, 1, "milo_seco_1", "Lauti");
+  check(true, "Pam ve el cambio en vivo");
+  await adm.click('#panel-1 .task[data-key="milo_seco_1"]');
+  await adm.locator("#elegirLista .gate-persona", { hasText: "Nadie" }).click();
+  await adm.waitForFunction(() => !document.querySelector('#panel-1 .task[data-key="milo_seco_1"]').classList.contains("checked"), null, { timeout: 5000 }); await guardado(adm);
+  check(!(await leerTareas(rid))["1_milo_seco_1"], "admin destilda una tarea");
+  await adm.click('#panel-1 .task[data-key="milo_seco_1"]');
+  await adm.click("#elegirCancelar");
+  check(!(await leerTareas(rid))["1_milo_seco_1"], "Cancelar no cambia nada");
+  await adm.locator('.app-nav a[href="#muro"]').click();
+  await adm.waitForFunction(() => document.getElementById("comentariosFeed").textContent.includes("Milo comió"), null, { timeout: 10000 });
+  check(await adm.isVisible("#muro .comentario-form"), "modo admin: puede comentar en el recorrido cerrado");
+  await adm.click("#comentariosFeed .comentario-acciones button:has-text('Editar')");
+  await adm.fill("#comentariosFeed .comentario-edit textarea", "Milo comió todo hoy (editado por admin)");
+  await adm.click("#comentariosFeed .comentario-edit button:has-text('Guardar')");
+  await adm.waitForFunction(() => document.getElementById("comentariosFeed").textContent.includes("editado por admin"), null, { timeout: 5000 });
+  check(true, "modo admin: edita el comentario de Pam");
+  // Renombrar desde el panel
+  await adm.goto(BASE + "/admin.html"); await adm.waitForSelector(".persona-row", { timeout: 10000 });
+  adm.respuestaPrompt = "Sofía";
+  await adm.locator(".persona-row", { hasText: "Sofi" }).locator('[data-p="nombre"]').click();
+  await adm.waitForFunction(() => document.querySelector(".personas-list").textContent.includes("Sofía"), null, { timeout: 5000 });
+  await pam.waitForFunction(() => document.getElementById("standings").textContent.includes("Sofía"), null, { timeout: 10000 });
+  check(true, "admin renombra a Sofi como Sofía y todos lo ven");
+
   // Home y ranking
   console.log("\n== Home y ranking ==");
   const home = await pagina(null, { ancho: 360 });
@@ -379,15 +452,52 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await lb.goto(BASE + "/leaderboard.html"); await lb.waitForSelector(".fila");
   tareas = await leerTareas(rid);
   const txtLb = await lb.textContent("#lista");
-  for(const pid of ["pam","lauti","juan","sofi"]){
+  for(const pid of ["pam","lauti","juan","sofi"]){  // puntos después de los cambios del admin
     const pp = puntosOraculo(tareas, pid);
     check(pp === 0 || txtLb.includes(pp + " pts"), `ranking: ${pid} con ${pp} pts`);
   }
   await sinDesborde(lb, "ranking");
   await pam.setViewportSize({ width: 360, height: 800 }); await sinDesborde(pam, "recorrido");
   await adm.setViewportSize({ width: 360, height: 800 }); await sinDesborde(adm, "admin");
-  const filaSofi = await adm.locator(".persona-row", { hasText: "Sofi" }).textContent();
+  const filaSofi = await adm.locator(".persona-row", { hasText: "Sofía" }).textContent();
   check(filaSofi.includes(`🏁 ${pctSofi}%`), "admin ve el % congelado de Sofi con 🏁");
+
+  // ================= MODO OSCURO =================
+  console.log("\n== Modo oscuro ==");
+  const homeOsc = await pagina(null, { esquema: "dark" });
+  await homeOsc.goto(BASE + "/index.html");
+  await homeOsc.waitForSelector("#recorridosPasados .recorrido-btn", { timeout: 10000 });
+  check(await homeOsc.evaluate(() => document.documentElement.classList.contains("dark")), "con el celular en modo oscuro, la app arranca oscura (Auto)");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Auto"), "el botón dice '🌓 Auto'");
+  await homeOsc.screenshot({ path: SHOTS + "/10-oscuro-home.png", fullPage: true });
+  await homeOsc.click(".landing-topbar [data-tema]");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Oscuro"), "1er toque: 🌙 Oscuro");
+  await homeOsc.click(".landing-topbar [data-tema]");
+  check(!(await homeOsc.evaluate(() => document.documentElement.classList.contains("dark"))), "2do toque: ☀️ Claro, aunque el celular esté oscuro");
+  await homeOsc.reload(); await homeOsc.waitForSelector(".landing-topbar [data-tema]");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Claro") && !(await homeOsc.evaluate(() => document.documentElement.classList.contains("dark"))), "la elección queda guardada al recargar");
+  await homeOsc.click(".landing-topbar [data-tema]");
+  check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Auto") && await homeOsc.evaluate(() => document.documentElement.classList.contains("dark")), "3er toque: vuelve a 🌓 Auto");
+  const pamOsc = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" }, { esquema: "dark" });
+  await pamOsc.goto(urlDe()); await pamOsc.waitForSelector("#gateLoginBtn", { state:"visible" });
+  await pamOsc.screenshot({ path: SHOTS + "/11-oscuro-entrada.png" });
+  await login(pamOsc); await pamOsc.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  await pamOsc.waitForTimeout(800); await cerrarModales(pamOsc);
+  await pamOsc.evaluate(() => { document.querySelectorAll("#guia details")[0].open = true; window.scrollTo(0, 0); });
+  await pamOsc.screenshot({ path: SHOTS + "/12-oscuro-recorrido.png", fullPage: true });
+  await pamOsc.evaluate(() => showVictory(mensajeCierre(86)));
+  await pamOsc.waitForTimeout(900);
+  await pamOsc.screenshot({ path: SHOTS + "/13-oscuro-cierre.png" });
+  const lbOsc = await pagina(null, { esquema: "dark" });
+  await lbOsc.goto(BASE + "/leaderboard.html"); await lbOsc.waitForSelector(".fila");
+  await lbOsc.screenshot({ path: SHOTS + "/14-oscuro-ranking.png", fullPage: true });
+  const admOsc = await pagina({ sub:"admin", email:"bm.blancom@gmail.com", email_verified:true, name:"Admin" }, { esquema: "dark" });
+  await admOsc.goto(BASE + "/admin.html"); await admOsc.waitForSelector("#loginBtn"); await login(admOsc);
+  await admOsc.waitForSelector(".persona-row", { timeout: 10000 });
+  const nombresCortados = await admOsc.$$eval(".persona-row .info", els => els.filter(e => e.getBoundingClientRect().width < 120).length);
+  check(nombresCortados === 0, "admin: los nombres de las personas no se parten letra por letra");
+  await admOsc.screenshot({ path: SHOTS + "/15-oscuro-admin.png", fullPage: true });
+  check(true, "capturas en modo oscuro de home, entrada, recorrido, cierre, ranking y admin");
 
   check(errores.length === 0, "sin errores de JavaScript en ninguna página" + (errores.length ? ":\n   " + errores.join("\n   ") : ""));
   console.log(`\n${oks} OK, ${fallas} FALLAS`);

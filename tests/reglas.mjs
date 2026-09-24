@@ -60,6 +60,38 @@ await t("A borra su comentario del recorrido", assertSucceeds(deleteDoc(doc(A,"r
 await t("admin borra comentario ajeno", assertSucceeds(deleteDoc(doc(admin,"comentarios/c1"))));
 await t("admin libera cuenta", assertSucceeds(updateDoc(doc(admin,"recorridos/r1/participantes/lauti"), {uid:null})));
 await t("comentario viejo sin uid: nadie lo edita", (async()=>{ await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(),"comentarios/viejo"), {nombre:"X", mensaje:"m"})); await assertFails(updateDoc(doc(A,"comentarios/viejo"), {mensaje:"y"})); })());
+// ===== Recorridos pasados, archivados y en curso =====
+const hoy = new Date(); const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+await env.withSecurityRulesDisabled(async c => {
+  const f = c.firestore();
+  await setDoc(doc(f,"recorridos/pasado"), {nombre:"Pasado", dias:3, fechaInicio:"2020-01-01", activo:true});
+  await setDoc(doc(f,"recorridos/pasado/participantes/lauti"), {nombre:"Lauti", uid:"uidA"});
+  await setDoc(doc(f,"recorridos/pasado/tareas/1_milo_seco_1"), {dia:1, key:"milo_seco_1", pid:"lauti", uid:"uidA", nombre:"Lauti", creado:1});
+  await setDoc(doc(f,"recorridos/pasado/comentarios/c1"), {uid:"uidA", nombre:"Lauti", mensaje:"hola"});
+  await setDoc(doc(f,"recorridos/archivado"), {nombre:"Arch", dias:3, fechaInicio:iso(hoy), activo:false});
+  await setDoc(doc(f,"recorridos/archivado/participantes/lauti"), {nombre:"Lauti", uid:"uidA"});
+  await setDoc(doc(f,"recorridos/encurso"), {nombre:"En curso", dias:3, fechaInicio:iso(hoy), activo:true});
+  await setDoc(doc(f,"recorridos/encurso/participantes/lauti"), {nombre:"Lauti", uid:"uidA"});
+});
+const tareaA = (dia,key) => ({dia, key, pid:"lauti", nombre:"Lauti", uid:"uidA", creado:5});
+await t("en curso (con fecha de hoy): Lauti tilda", assertSucceeds(setDoc(doc(A,"recorridos/encurso/tareas/1_zoe_seco_1"), tareaA(1,"zoe_seco_1"))));
+await t("en curso: Lauti guarda su cierre", assertSucceeds(updateDoc(doc(A,"recorridos/encurso/participantes/lauti"), {cierre:{pct:90}})));
+await t("pasado: Lauti no puede tildar", assertFails(setDoc(doc(A,"recorridos/pasado/tareas/2_zoe_seco_1"), tareaA(2,"zoe_seco_1"))));
+await t("pasado: Lauti no puede destildar lo suyo", assertFails(deleteDoc(doc(A,"recorridos/pasado/tareas/1_milo_seco_1"))));
+await t("pasado: Lauti no cambia recordatorios ni cierre", assertFails(updateDoc(doc(A,"recorridos/pasado/participantes/lauti"), {cierre:{pct:100}})));
+await t("pasado: Lauti sí puede marcar que vio el cierre", assertSucceeds(updateDoc(doc(A,"recorridos/pasado/participantes/lauti"), {vioCierre:true})));
+await t("pasado: Lauti no comenta en el muro del recorrido", assertFails(setDoc(doc(A,"recorridos/pasado/comentarios/c2"), {uid:"uidA", mensaje:"tarde"})));
+await t("pasado: Lauti no edita su comentario", assertFails(updateDoc(doc(A,"recorridos/pasado/comentarios/c1"), {mensaje:"editado"})));
+await t("pasado: Lauti no borra su comentario", assertFails(deleteDoc(doc(A,"recorridos/pasado/comentarios/c1"))));
+await t("archivado: Lauti no puede tildar", assertFails(setDoc(doc(A,"recorridos/archivado/tareas/1_zoe_seco_1"), tareaA(1,"zoe_seco_1"))));
+await t("pasado: admin tilda a nombre de Lauti", assertSucceeds(setDoc(doc(admin,"recorridos/pasado/tareas/2_zoe_seco_1"), {...tareaA(2,"zoe_seco_1"), uid:null})));
+await t("pasado: admin cambia quién hizo una tarea", assertSucceeds(setDoc(doc(admin,"recorridos/pasado/tareas/2_zoe_seco_1"), {dia:2, key:"zoe_seco_1", pid:"otro", nombre:"Otro", uid:null, creado:6})));
+await t("pasado: admin destilda", assertSucceeds(deleteDoc(doc(admin,"recorridos/pasado/tareas/1_milo_seco_1"))));
+await t("pasado: admin edita el comentario de Lauti", assertSucceeds(updateDoc(doc(admin,"recorridos/pasado/comentarios/c1"), {mensaje:"(editado por admin)"})));
+await t("pasado: admin comenta", assertSucceeds(setDoc(doc(admin,"recorridos/pasado/comentarios/c3"), {uid:"adminUid", nombre:"Admin", mensaje:"¡Gracias a todos!"})));
+await t("pasado: admin cambia el nombre de una persona", assertSucceeds(updateDoc(doc(admin,"recorridos/pasado/participantes/lauti"), {nombre:"Lautaro"})));
+await t("global: admin edita un comentario ajeno", (async () => { await setDoc(doc(A,"comentarios/g1"), {uid:"uidA", mensaje:"x"}); await assertSucceeds(updateDoc(doc(admin,"comentarios/g1"), {mensaje:"y"})); })());
+
 console.log(`\n${n} pruebas OK`);
 await env.cleanup();
 process.exit(0);

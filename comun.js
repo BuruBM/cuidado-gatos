@@ -12,6 +12,32 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const auth = firebase.auth();
 
+// ===== Tema claro / oscuro: automático según el celular, o elegido con el botón (se guarda en este dispositivo) =====
+const TEMAS = ["auto", "oscuro", "claro"];
+const ETIQUETA_TEMA = { auto:"🌓 Auto", oscuro:"🌙 Oscuro", claro:"☀️ Claro" };
+const mqOscuro = window.matchMedia("(prefers-color-scheme: dark)");
+function temaElegido(){
+  try{ return localStorage.getItem("lesgates_tema") || "auto"; }catch(e){ return "auto"; }
+}
+function aplicarTema(){
+  const t = temaElegido();
+  const oscuro = t === "oscuro" || (t === "auto" && mqOscuro.matches);
+  document.documentElement.classList.toggle("dark", oscuro);
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if(meta) meta.content = oscuro ? "#1B1814" : "#F2EEE1";
+  document.querySelectorAll("[data-tema]").forEach(b => { b.textContent = ETIQUETA_TEMA[t]; b.title = "Tema: automático, oscuro o claro"; });
+}
+function botonTema(){ return `<button class="tema-btn" data-tema>${ETIQUETA_TEMA[temaElegido()]}</button>`; }
+aplicarTema();
+if(mqOscuro.addEventListener) mqOscuro.addEventListener("change", aplicarTema);
+document.addEventListener("click", e => {
+  if(!e.target.closest("[data-tema]")) return;
+  const siguiente = TEMAS[(TEMAS.indexOf(temaElegido()) + 1) % TEMAS.length];
+  try{ localStorage.setItem("lesgates_tema", siguiente); }catch(err){}
+  aplicarTema();
+});
+document.addEventListener("DOMContentLoaded", aplicarTema);
+
 if("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
 
 // Tiene que coincidir con la lista de firestore.rules

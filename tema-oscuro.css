@@ -1,0 +1,52 @@
+/* Modo oscuro: se activa con la clase "dark" en <html> (automático según el celular o elegido con el botón 🌓).
+   Lo cargan index.html, admin.html y leaderboard.html. */
+
+.tema-btn{background:none; border:none; padding:0; font-family:inherit; font-size:12.5px; color:var(--ink-soft); cursor:pointer; white-space:nowrap;}
+
+html.dark{
+  color-scheme:dark;
+  --bg:#1B1814; --surface:#25211C; --surface-2:#2E2923;
+  --ink:#EEE7D9; --ink-soft:#B2A892;
+  --mustard:#D9AE4A; --mustard-soft:#3A3121;
+  --teal:#72AEA3; --teal-soft:#1E302C;
+  --clay:#D9805F; --clay-soft:#3B2620;
+  --success:#93B566; --success-soft:#243019;
+  --aqua:#4FB3A3; --aqua-soft:#1B302D;
+  --orange:#E89B52; --orange-soft:#3A2A19;
+  --line:#3C362D; --shadow:0 2px 0 rgba(0,0,0,0.35);
+}
+html.dark body{background:var(--bg); color:var(--ink);}
+
+/* Superficies que eran blancas o crema fijas */
+html.dark .task, html.dark .info-item, html.dark .recorrido-item, html.dark .gate-persona,
+html.dark .dest-chip, html.dark .landing-topbar .link-btn, html.dark .btn-google{background:var(--surface-2); color:var(--ink);}
+html.dark .modal{background:var(--surface);}
+html.dark .checkbox{background:var(--surface-2);}
+html.dark .task.locked.checked{background:#2A2620;}
+html.dark .task:hover{border-color:#5A5144;}
+html.dark .recorrido-btn.pasado, html.dark .photo-slot{background:rgba(255,255,255,0.04);}
+html.dark input, html.dark textarea, html.dark select{background:var(--surface-2); color:var(--ink); border-color:var(--line);}
+html.dark input::placeholder, html.dark textarea::placeholder{color:#8A8170;}
+
+/* Bordes claros escritos a mano en la guía */
+html.dark .standing-note, html.dark .cat-card, html.dark .warn-box, html.dark .fortune{border-color:var(--line) !important;}
+html.dark .warn-box{color:var(--ink) !important;}
+html.dark .lista, html.dark .fila, html.dark .podio-avatar{border-color:var(--line);}
+
+/* Texto sobre fondos que ahora son claros (botones y pestañas activas) */
+html.dark .btn:not(.secondary):not(.btn-google), html.dark .day-tab.active, html.dark .comentario-tab.active, html.dark .toast{color:#1B1814;}
+html.dark .day-tab.active .dot{background:#1B1814;}
+html.dark .cierre-card{background:#3A3228;}
+html.dark .cierre-card .btn{background:var(--ink); color:#1B1814;}
+html.dark .p1 .podio-bloque{background:var(--mustard);}
+
+/* Detalles de color */
+html.dark .tag-activo{color:var(--success);}
+html.dark .comentario-item:nth-child(3n+1) .comentario-avatar{color:var(--aqua);}
+html.dark .comentario-item:nth-child(3n+2) .comentario-avatar{color:var(--orange);}
+html.dark .comentario-item:nth-child(3n) .comentario-avatar{color:var(--mustard);}
+html.dark .otro-marcador{border-color:var(--surface);}
+html.dark #journeyPath{stroke:#5C5346;}
+html.dark .modal-overlay{background:rgba(0,0,0,0.65);}
+html.dark .gate-error{color:#E38F74;}
+html.dark .gate-error.suave{color:var(--ink-soft);}
