@@ -183,6 +183,9 @@
 
   .day-panel{display:none;}
   .day-panel.active{display:block;}
+  .dia-futuro-nota{display:none;}
+  .day-panel.futuro .dia-futuro-nota{display:inline;}
+  .day-panel.futuro .task{opacity:0.5; cursor:not-allowed;}
   .day-date{color:var(--ink-soft); font-size:14px; margin:-2px 0 16px;}
 
   .task-group{margin-bottom:16px;}
@@ -701,7 +704,7 @@
       <div class="notif-item"><label><input type="checkbox" id="notif-noche-on"> Toma de la noche (+ aviso de piedras)</label><input type="time" id="notif-noche-hora" value="20:00"></div>
       <div class="notif-item"><label><input type="checkbox" id="notif-suplementos-on"> Suplementos</label><input type="time" id="notif-suplementos-hora" value="18:00"></div>
     </div>
-    <div class="notif-row" style="margin-top:14px;"><button class="btn" id="notifBtn">Guardar y activar</button></div>
+    <div class="notif-row" style="margin-top:14px;"><button class="btn" id="notifBtn">Guardar y activar</button><button class="btn secondary" id="notifProbarBtn">Probar aviso</button></div>
     <div class="notif-status" id="notifStatus">Todavía no activado.</div>
   </div>
 
@@ -1023,6 +1026,7 @@ async function initGate(){
       mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido es solo para quienes cuidan a Milo y Zoe. Entrá con tu cuenta de Google.");
       document.getElementById("gateLoginStep").style.display = "block";
       document.getElementById("gateNameStep").style.display = "none";
+      if(navegadorEmbebido()) gateError(AVISO_EMBEBIDO.replace(" El link ya quedó copiado.", ""));
       document.getElementById("gateSession").innerHTML = "";
       return;
     }
@@ -1165,6 +1169,8 @@ let ultimoMensajeMostrado = null;
 function mostrarMensajePersonal(){
   const pp = (participantes[participanteId] || {}).popupPersonal;
   if(!pp || pp.leido) return false;
+  // Si ya hay un aviso abierto (ej. la bienvenida), este sale cuando lo cierren
+  if(document.getElementById("avisoOverlay").classList.contains("show")) return true;
   const clave = (pp.enviado || "") + "|" + pp.mensaje;
   if(clave === ultimoMensajeMostrado) return true;
   ultimoMensajeMostrado = clave;
@@ -1179,6 +1185,8 @@ function showAviso(titulo, texto){
 }
 document.getElementById("avisoClose").addEventListener("click", () => {
   document.getElementById("avisoOverlay").classList.remove("show");
+  // Si había más de un aviso pendiente (bienvenida + mensaje del admin), mostrar el siguiente
+  if(appIniciada) setTimeout(mostrarMensajePersonal, 250);
 });
 
 // ===== Render día por día =====
@@ -1227,12 +1235,21 @@ function renderDayPanels(){
       groupsHtml += `</div>`;
     });
     panel.innerHTML = `
-      <div class="day-date">${fechaParaDia(recorrido.fechaInicio, d-1)}</div>
+      <div class="day-date">${fechaParaDia(recorrido.fechaInicio, d-1)}<span class="dia-futuro-nota"> · todavía no llegó</span></div>
       <div class="day-progress"><div class="day-progress-fill" id="fill-${d}"></div></div>
       ${groupsHtml}
     `;
     container.appendChild(panel);
   }
+}
+
+// Se tilda solo hasta hoy, con un día de gracia al final para quien se olvidó de tildar el último día
+function estadoDia(d){
+  if(!recorrido.fechaInicio) return "ok";
+  const hoy = diaDeHoy();
+  if(d > hoy) return "futuro";
+  if(hoy > TOTAL_DIAS + 1) return "cerrado";
+  return "ok";
 }
 
 function detallePiedras(d){
@@ -1258,6 +1275,7 @@ function updateUI(){
       by.textContent = t ? "✓ " + (ajena ? nombreDe(t.pid) : "Vos") : "";
       if(key === "piedras") el.querySelector(".task-detail").textContent = detallePiedras(d);
     });
+    document.getElementById("panel-"+d).classList.toggle("futuro", estadoDia(d) === "futuro");
     const hechas = TAREAS_OBLIGATORIAS.filter(k => tareas[tareaId(d, k)]).length;
     document.getElementById("fill-"+d).style.width = (hechas / TAREAS_OBLIGATORIAS.length * 100) + "%";
     document.querySelector(`.day-tab[data-day="${d}"]`).classList.toggle("done", hechas === TAREAS_OBLIGATORIAS.length);
@@ -1277,6 +1295,9 @@ function attachTaskHandlers(){
       const t = tareas[tareaId(dia, key)];
       // Lo que tildó otra persona no se toca: ni destildar ni volver a tildar
       if(t && t.pid !== participanteId){ toast(`Esto ya lo hizo ${nombreDe(t.pid)}.`); return; }
+      const estado = estadoDia(dia);
+      if(estado === "futuro"){ toast(diaDeHoy() < 1 ? `El recorrido arranca el ${fechaParaDia(recorrido.fechaInicio, 0)}.` : "Este día todavía no llegó."); return; }
+      if(estado === "cerrado"){ toast("El recorrido ya terminó: no se pueden cambiar las tareas."); return; }
       const esObligatoria = TAREAS_OBLIGATORIAS.includes(key);
       const obligatoriasAntes = TAREAS_OBLIGATORIAS.filter(k => tareas[tareaId(dia, k)]).length;
       el.dataset.busy = "1";
@@ -1286,11 +1307,11 @@ function attachTaskHandlers(){
         } else {
           await ref.set({ dia, key, pid: participanteId, nombre: participanteNombre, uid: usuario.uid, creado: Date.now() });
           if(yaCerro(participanteId) && !recorridoTerminado()){
-            participanteRef().update({ cierre: null }).catch(err => console.error(err));
+            participanteRef().update({ cierre: null, vioCierre: false }).catch(err => console.error(err));
             toast("¡Volviste! Tu cierre se reabrió.");
           }
           if(esObligatoria && obligatoriasAntes + 1 === TAREAS_OBLIGATORIAS.length) showCelebration();
-          else if(esObligatoria && obligatoriasAntes === 0) showGallitoReminder();
+          else if(esObligatoria && obligatoriasAntes === 0 && dia === diaDeHoy()) showGallitoReminder();
         }
       }catch(e){
         console.error(e);
@@ -1490,9 +1511,19 @@ function checkReminders(){
     const fireKey = now.toDateString() + tipo + hhmm;
     if(lastFired[fireKey]) return;
     lastFired[fireKey] = true;
-    new Notification("🐾 Recordatorio", { body: NOTIF_TIPOS[tipo].texto() });
+    mostrarNotificacion("🐾 Recordatorio", NOTIF_TIPOS[tipo].texto());
   });
 }
+// Android y iPhone no permiten "new Notification": hay que usar el service worker
+async function mostrarNotificacion(titulo, cuerpo){
+  try{
+    const reg = "serviceWorker" in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if(reg){ await reg.showNotification(titulo, { body: cuerpo, icon: "icon-192.png" }); return true; }
+  }catch(e){ console.error(e); }
+  try{ new Notification(titulo, { body: cuerpo, icon: "icon-192.png" }); return true; }
+  catch(e){ console.error(e); return false; }
+}
+
 function arrancarTimerNotif(){
   if(notifTimer) clearInterval(notifTimer);
   notifTimer = setInterval(checkReminders, 20000);
@@ -1510,6 +1541,18 @@ function initNotif(){
     document.getElementById("notifStatus").textContent = "Activados. Dejá esta pestaña abierta para que suenen.";
   }
 }
+document.getElementById("notifProbarBtn").addEventListener("click", async () => {
+  const status = document.getElementById("notifStatus");
+  if(!("Notification" in window)){
+    status.textContent = esIOS ? "En iPhone los avisos solo funcionan con la app instalada en la pantalla de inicio (iOS 16.4 o más nuevo)." : "Este navegador no soporta notificaciones.";
+    return;
+  }
+  const perm = await Notification.requestPermission();
+  if(perm !== "granted"){ status.textContent = "No se dio permiso de notificaciones. Podés activarlo desde la configuración del navegador."; return; }
+  const ok = await mostrarNotificacion("🐾 Así se ven tus avisos", "Si ves esto, los recordatorios funcionan en este dispositivo.");
+  status.textContent = ok ? "Aviso de prueba enviado. ¿Te llegó?" : "No se pudo mostrar el aviso en este dispositivo.";
+});
+
 document.getElementById("notifBtn").addEventListener("click", async () => {
   const notif = leerNotifForm();
   const status = document.getElementById("notifStatus");
@@ -1522,7 +1565,7 @@ document.getElementById("notifBtn").addEventListener("click", async () => {
   }
   if(!Object.values(notif).some(c => c.on)){ status.textContent = "Guardado. No tenés recordatorios activos."; return; }
   if(!("Notification" in window)){
-    status.textContent = "Guardado, pero este navegador no soporta notificaciones.";
+    status.textContent = esIOS ? "Guardado. En iPhone los avisos solo funcionan con la app instalada en la pantalla de inicio (iOS 16.4 o más nuevo)." : "Guardado, pero este navegador no soporta notificaciones.";
     return;
   }
   const perm = await Notification.requestPermission();

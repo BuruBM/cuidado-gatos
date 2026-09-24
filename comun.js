@@ -21,7 +21,19 @@ function esAdmin(user){
   return !!(user && user.email && ADMIN_EMAILS.includes(user.email.toLowerCase()));
 }
 
+// Navegadores internos de apps (Instagram, Facebook, TikTok…): Google bloquea el login ahí
+function navegadorEmbebido(){
+  return /Instagram|FBAN|FBAV|FB_IAB|Line\/|TikTok|musical_ly|Snapchat|; wv\)/i.test(navigator.userAgent);
+}
+const AVISO_EMBEBIDO = "Google no deja iniciar sesión desde el navegador de esta app. Abrí el link en Chrome o Safari: tocá los tres puntos (⋮ o …) y elegí \"Abrir en el navegador\". El link ya quedó copiado.";
+
 async function loginGoogle(){
+  if(navegadorEmbebido()){
+    // Copiar sin esperar: en algunos navegadores internos el portapapeles nunca responde
+    try{ navigator.clipboard.writeText(location.href).catch(() => {}); }catch(e){}
+    alert(AVISO_EMBEBIDO);
+    return;
+  }
   const provider = new firebase.auth.GoogleAuthProvider();
   provider.setCustomParameters({ prompt: "select_account" });
   try{
@@ -98,6 +110,12 @@ function puntosDeTarea(key){
 }
 function puntosPosiblesPorDia(){
   return tareasDelDia().reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
+}
+
+// Fecha de hoy "AAAA-MM-DD" en hora local (toISOString usa UTC y en Argentina cambia de día a las 21 hs)
+function hoyISO(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
 }
 
 // Día de hoy dentro del recorrido (1 = primer día). Sin fecha de inicio, 0 (nunca termina).
