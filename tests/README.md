@@ -12,5 +12,7 @@ npm test
 - `reglas.mjs`: reglas de seguridad de Firestore (quién puede tildar, vincular nombres, comentar, etc.).
 - `recorrido-multiple.cjs`: un recorrido de 3 días con 4 personas, de punta a punta en el navegador
   (admin, login con Google, apodos, checklist compartido, cierre, ranking, home). Guarda capturas en `capturas/`.
+- `turnos.cjs`: la página de turnos (anotarse con código o con Google, dos personas a la vez sobre el mismo día,
+  Mis días, calendario y lista, admin, borradores, modo oscuro). Guarda capturas en `capturas/turnos/`.
 
-Última revisión completa: 104 chequeos del recorrido y 64 de reglas, todos OK.
+Última revisión completa: 119 chequeos del recorrido, 61 de turnos y 114 de reglas, todos OK.

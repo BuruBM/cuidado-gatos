@@ -1,0 +1,541 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#F2EEE1">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Turnos · Les Gates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Karla:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="comun.js"></script>
+<style>
+  :root{
+    --bg:#F2EEE1; --surface:#FFFFFF; --ink:#2B2620; --ink-soft:#655D4F;
+    --mustard:#C79A2E; --teal:#355F58; --teal-soft:#DCE7E3; --clay:#A65136; --clay-soft:#F0DCD2;
+    --success:#5E7A3D; --success-soft:#E1E9D3; --orange:#DD8A3D; --orange-soft:#FBE7D2;
+    --line:#DED2B4; --shadow:0 2px 0 rgba(43,38,32,0.08);
+    --libre-bg:#FBEEDD; --libre-txt:#B0621F; --ok-bg:#EEF3E4; --ok-txt:#4E6932; --ok-barra:#5E7A3D;
+  }
+  html.dark{--libre-bg:#3A2A19; --libre-txt:#E89B52; --ok-bg:#243019; --ok-txt:#A9C77F; --ok-barra:#93B566;}
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Karla',sans-serif; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:560px; margin:0 auto; padding:14px 16px 60px;}
+  button{font-family:inherit; cursor:pointer;}
+
+  .topbar{display:flex; align-items:center; gap:12px; font-size:12.5px; color:var(--ink-soft); min-height:36px; margin-bottom:18px;}
+  .topbar a{color:var(--ink); font-weight:700; text-decoration:none; font-size:13px;}
+  .topbar .der{margin-left:auto; display:flex; gap:12px; align-items:center;}
+  .pill-rec{background:var(--teal); color:#F7F3EA !important; border-radius:100px; padding:6px 12px; font-size:12.5px !important; white-space:nowrap;}
+  html.dark .pill-rec{background:#2F5A53;}
+
+  header{display:flex; align-items:center; gap:12px; margin-bottom:10px;}
+  .caras{width:46px; height:22px; flex:none; overflow:visible;}
+  .eyebrow{font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--teal); margin-bottom:3px;}
+  html.dark .eyebrow{color:#72AEA3;}
+  h1{font-family:'Fraunces',serif; font-weight:700; font-size:25px; line-height:1.1; margin:0; letter-spacing:-.01em;}
+  .intro{color:var(--ink-soft); font-size:14px; line-height:1.5; margin:0 0 20px;}
+
+  .resumen{display:flex; align-items:center; gap:14px; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:12px 14px; margin-bottom:16px; box-shadow:var(--shadow);}
+  .resumen b{font-size:14.5px; white-space:nowrap;}
+  .resumen b span{font-weight:500; color:var(--ink-soft);}
+  .barra{flex:1; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:3px;}
+  .barra i{height:10px; border-radius:3px; background:var(--libre-bg); border:1px dashed var(--orange);}
+  .barra i.ok{background:var(--ok-barra); border:1px solid var(--ok-barra);}
+
+  .controles{display:flex; align-items:center; gap:8px; margin-bottom:14px; flex-wrap:wrap;}
+  .seg{display:flex; background:var(--surface); border:1px solid var(--line); border-radius:100px; padding:2px;}
+  .seg button{border:none; background:none; font-size:12.5px; font-weight:700; color:var(--ink-soft); padding:6px 11px; border-radius:100px;}
+  .seg button.on{background:var(--ink); color:#fff;}
+  html.dark .seg button.on{color:#1B1814;}
+  .seg.vista{margin-left:auto;}
+
+  /* Calendario */
+  .cal{display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:4px;}
+  .cal .dsem{text-align:center; font-size:10.5px; font-weight:700; color:var(--ink-soft); letter-spacing:.05em; padding-bottom:2px;}
+  .celda{min-height:70px; border-radius:10px; padding:4px 3px 3px; display:flex; flex-direction:column; align-items:center; gap:1px; position:relative; border:1.5px solid transparent; background:none; color:inherit; min-width:0;}
+  .celda .n{font-family:'Fraunces',serif; font-weight:700; font-size:14px; line-height:1; align-self:flex-start; padding-left:3px;}
+  .celda .n small{font-family:'Karla',sans-serif; font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em;}
+  .celda.fuera{cursor:default;}
+  .celda.fuera .n{color:#C9BFA8;}
+  html.dark .celda.fuera .n{color:#4A4338;}
+  .celda.ok{background:var(--ok-bg);}
+  .celda.ok .n{color:var(--ok-txt);}
+  .celda.libre{background:var(--libre-bg); border:1.5px dashed var(--orange);}
+  .celda.libre .n{color:var(--libre-txt);}
+  .celda.libre .mas{margin-top:7px; font-size:20px; font-weight:700; color:var(--libre-txt); line-height:1;}
+  .celda.libre.pasado .mas{font-size:13px; margin-top:10px;}
+  .celda .av-wrap{height:30px; margin-top:-2px;}
+  .celda svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .celda .nom{font-size:10.5px; font-weight:700; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .celda.mio{border:2px solid var(--teal);}
+  html.dark .celda.mio{border-color:#72AEA3;}
+  .celda .pin{position:absolute; top:5px; right:5px; width:6px; height:6px; border-radius:50%; background:var(--ink-soft);}
+  .celda.hoy .n{text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:3px;}
+  .celda.pasado{opacity:.6;}
+  .celda.sel{box-shadow:0 0 0 2.5px var(--ink); opacity:1;}
+  .cal.filtro .celda:not(.mio):not(.fuera){opacity:.25;}
+  .cal-nota{font-size:11.5px; color:var(--ink-soft); margin:8px 2px 12px; display:flex; gap:6px 14px; flex-wrap:wrap;}
+  .cal-nota i{display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--ink-soft); margin-right:4px; vertical-align:1px;}
+
+  .detalle{background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:10px 12px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow);}
+  .detalle .av-wrap{height:40px; flex:none;}
+  .detalle svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .detalle .t{flex:1; min-width:0;}
+  .detalle .f{font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft);}
+  .detalle b{display:block; font-size:15px;}
+  .detalle .c{font-size:13px; color:var(--ink-soft); line-height:1.35; overflow-wrap:anywhere;}
+  .btn-sm{flex:none; border:none; border-radius:100px; padding:7px 13px; font-size:13px; font-weight:700; background:var(--ink); color:#fff;}
+  .btn-sm.sec{background:transparent; color:var(--ink); border:1.5px solid var(--line); padding:5px 11px; font-size:12.5px;}
+  html.dark .btn-sm:not(.sec){color:#1B1814;}
+  .vos{display:inline-block; background:var(--teal-soft); color:var(--teal); font-size:10px; font-weight:700; border-radius:100px; padding:1px 6px; margin-left:5px; vertical-align:2px; letter-spacing:.03em;}
+  html.dark .vos{color:#72AEA3;}
+
+  /* Lista compacta */
+  .fila{display:flex; align-items:center; gap:10px; min-height:50px; padding:5px 10px 5px 0; border-radius:12px; margin-bottom:5px; border:1.5px solid transparent;}
+  .fila.ok{background:var(--ok-bg);}
+  .fila.libre{background:var(--libre-bg); border:1.5px dashed var(--orange);}
+  .fila.mio{border:2px solid var(--teal);}
+  html.dark .fila.mio{border-color:#72AEA3;}
+  .fila.pasado{opacity:.6;}
+  .fila .fe{width:58px; flex:none; text-align:center; line-height:1.05;}
+  .fila .fe small{display:block; font-size:10px; font-weight:700; letter-spacing:.06em; text-transform:uppercase;}
+  .fila .fe span{font-family:'Fraunces',serif; font-weight:700; font-size:19px;}
+  .fila.ok .fe{color:var(--ok-txt);}
+  .fila.libre .fe{color:var(--libre-txt);}
+  .fila.hoy .fe span{text-decoration:underline; text-decoration-thickness:2px; text-underline-offset:3px;}
+  .fila .av-wrap{height:32px; flex:none;}
+  .fila svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .fila .t{flex:1; min-width:0; font-size:14.5px;}
+  .fila .t b{font-weight:700;}
+  .fila .t .c{display:block; font-size:12.5px; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .fila .libre-txt{flex:1; font-weight:700; color:var(--libre-txt); font-size:14.5px;}
+  .vacio{font-size:14px; color:var(--ink-soft); text-align:center; padding:18px 8px;}
+
+  .pie{margin-top:22px; font-size:12.5px; color:var(--ink-soft); text-align:center; line-height:1.6;}
+  .pie button{background:none; border:none; padding:0; font-size:12.5px; color:var(--ink-soft); text-decoration:underline; text-underline-offset:3px;}
+  .mensaje{text-align:center; padding:60px 10px; color:var(--ink-soft);}
+  .mensaje h1{margin-bottom:10px;}
+
+  /* Hoja para anotarse / editar */
+  .velo{position:fixed; inset:0; background:rgba(43,38,32,.45); display:none; align-items:flex-end; justify-content:center; z-index:50;}
+  .velo.show{display:flex;}
+  html.dark .velo{background:rgba(0,0,0,.6);}
+  .hoja{background:var(--surface); width:100%; max-width:560px; border-radius:22px 22px 0 0; padding:18px 18px 24px; max-height:90vh; overflow:auto;}
+  .hoja .asa{width:40px; height:4px; border-radius:4px; background:var(--line); margin:0 auto 12px;}
+  .hoja h2{font-family:'Fraunces',serif; font-size:21px; font-weight:600; margin:0 0 2px;}
+  .hoja .sub{font-size:13.5px; color:var(--ink-soft); margin:0 0 14px;}
+  .etq{font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); margin:0 0 7px; display:block;}
+  .personas{display:grid; grid-template-columns:repeat(auto-fill, minmax(92px,1fr)); gap:7px; margin-bottom:8px;}
+  .persona{display:flex; flex-direction:column; align-items:center; gap:4px; background:#FBF9F3; border:1.5px solid var(--line); border-radius:14px; padding:9px 4px 7px; font-size:14px; font-weight:700; color:var(--ink); min-width:0;}
+  .persona span.nom{max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .persona .av-wrap{height:40px;}
+  .persona svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .persona.sel{border-color:var(--teal); background:var(--teal-soft); box-shadow:0 0 0 1.5px var(--teal);}
+  html.dark .persona{background:var(--surface-2);}
+  .quien-elegido{display:flex; align-items:center; gap:10px; background:var(--teal-soft); border-radius:14px; padding:8px 12px; margin-bottom:14px; font-weight:700;}
+  .quien-elegido .av-wrap{height:40px;}
+  .quien-elegido svg.av{height:100%; width:auto; display:block; overflow:visible;}
+  .quien-elegido span.nom{flex:1;}
+  .quien-elegido button{background:none; border:none; font-size:12.5px; color:var(--teal); text-decoration:underline; text-underline-offset:3px; font-weight:700;}
+  html.dark .quien-elegido{background:#1E302C;}
+  html.dark .quien-elegido button{color:#72AEA3;}
+  .ayuda{font-size:12.5px; color:var(--ink-soft); margin:0 0 14px; line-height:1.45;}
+  .campo{width:100%; font-family:inherit; font-size:15px; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink);}
+  textarea.campo{resize:none;}
+  .codigo-input{letter-spacing:.3em; font-size:18px; text-align:center; margin-bottom:6px;}
+  .cont{text-align:right; font-size:11.5px; color:var(--ink-soft); margin:3px 0 14px;}
+  .acciones{display:flex; gap:8px;}
+  .acciones button{flex:1; border-radius:100px; padding:12px; font-size:15px; font-weight:700; border:none; background:var(--ink); color:#fff;}
+  .acciones button.sec{background:transparent; color:var(--ink); border:1.5px solid var(--ink);}
+  .acciones button:disabled{opacity:.4; cursor:default;}
+  html.dark .acciones button:not(.sec){color:#1B1814;}
+  .liberar{display:block; width:100%; margin-top:14px; background:none; border:none; font-size:14px; font-weight:700; color:var(--clay); text-decoration:underline; text-underline-offset:3px;}
+  html.dark .liberar{color:#D9805F;}
+  .aviso{background:var(--clay-soft); color:var(--clay); border-radius:12px; padding:9px 12px; font-size:13.5px; font-weight:700; margin:0 0 12px;}
+  html.dark .aviso{color:#E38F74;}
+  .o-google{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-top:12px; background:none; border:1.5px solid var(--line); border-radius:100px; padding:9px; font-size:13.5px; font-weight:700; color:var(--ink);}
+  .o-google svg{width:16px; height:16px;}
+  select.campo{margin-bottom:14px;}
+  .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:100px; font-size:13.5px; opacity:0; transition:opacity .3s ease; pointer-events:none; z-index:60; max-width:90vw; text-align:center;}
+  .toast.show{opacity:1;}
+  html.dark .toast{color:#1B1814;}
+</style>
+<link rel="stylesheet" href="tema-oscuro.css">
+</head>
+<body>
+<div class="wrap" id="app"><div class="mensaje">Cargando...</div></div>
+
+<div class="velo" id="velo"><div class="hoja" id="hoja"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+const CARAS = `<svg class="caras" viewBox="0 1.2 16 7.6" shape-rendering="crispEdges" aria-hidden="true"><g transform="rotate(-10 4.1 5.5)"><rect x="0.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="2.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="3.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="4.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="3.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="5.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="5.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="0.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="6.6" y="6.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="1.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="2.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="3.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="4.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/><rect x="5.6" y="7.5" width="1.03" height="1.03" fill="#3E9C8E"/></g><g transform="rotate(10 11.9 5.5)"><rect x="8.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="2.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="3.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="4.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="11.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="5.5" width="1.03" height="1.03" fill="#1C1814"/><rect x="13.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="5.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="8.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="14.4" y="6.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="9.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="10.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="11.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="12.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/><rect x="13.4" y="7.5" width="1.03" height="1.03" fill="#DD8A3D"/></g></svg>`;
+const GOOGLE_SVG = `<svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>`;
+
+const recorridoId = new URLSearchParams(location.search).get("r");
+const DS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+const DS_LARGO = ["domingo","lunes","martes","miércoles","jueves","viernes","sábado"];
+const MESES = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
+
+let recorrido = null;
+let participantes = {};
+let turnos = {};
+let usuario = null;
+let cargado = { participantes:false, turnos:false, auth:false };
+let vista = leerPref("lesgates_turnos_vista") || "cal";
+let filtro = "todos";
+let seleccionada = null;
+let hoja = null;   // { modo:"anotar"|"editar", fecha, pid, aviso }
+
+function leerPref(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
+function guardarPref(k, v){ try{ localStorage.setItem(k, v); }catch(e){} }
+function recorridoRef(){ return db.collection("recorridos").doc(recorridoId); }
+function fechaDate(f){ const [y,m,d] = f.split("-").map(Number); return new Date(y, m-1, d); }
+function fechaCorta(f){ const d = fechaDate(f); return `${DS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`; }
+function fechaLarga(f){ const d = fechaDate(f); return `${DS_LARGO[d.getDay()]} ${d.getDate()}`; }
+function nombreDe(pid){ return (participantes[pid] && participantes[pid].nombre) || "Alguien"; }
+function yo(){ return usuario ? Object.keys(participantes).find(pid => participantes[pid].uid === usuario.uid) || null : null; }
+function soyAdmin(){ return esAdmin(usuario); }
+function abierto(){
+  return recorrido.activo !== false && !recorrido.borrador && !(recorrido.fechaInicio && diaDelRecorrido(recorrido) > (recorrido.dias || 3) + 1);
+}
+// Se puede anotar o cambiar mientras el recorrido está abierto y el día no pasó; el admin, siempre
+function editable(f){ return soyAdmin() || (abierto() && f >= hoyISO()); }
+function puedeEditarTurno(f){ const t = turnos[f]; return !!t && editable(f) && (soyAdmin() || t.pid === yo()); }
+
+function toast(msg){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.classList.add("show");
+  clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove("show"), 3200);
+}
+function mensaje(titulo, texto){
+  document.getElementById("app").innerHTML = `<div class="topbar"><a href="index.html">← Inicio</a><span class="der">${botonTema()}</span></div>
+    <div class="mensaje"><h1>${escapeHtml(titulo)}</h1><p>${escapeHtml(texto)}</p></div>`;
+}
+
+// ===== Carga =====
+async function init(){
+  if(!recorridoId){ mensaje("Falta el recorrido", "Este link está incompleto. Pedile el link de turnos a quien te invitó."); return; }
+  try{
+    const snap = await recorridoRef().get();
+    if(!snap.exists){ mensaje("No encontrado", "Este recorrido ya no existe o el link está mal."); return; }
+    recorrido = snap.data();
+  }catch(e){
+    console.error(e);
+    mensaje("Error", "No se pudo cargar. Probá de nuevo en un rato.");
+    return;
+  }
+  document.title = `Turnos · ${recorrido.nombre || "Les Gates"}`;
+  recorridoRef().collection("participantes").onSnapshot(snap => {
+    participantes = {};
+    snap.forEach(d => participantes[d.id] = d.data());
+    cargado.participantes = true; render();
+    if(hoja) renderHoja();   // ej.: un código incorrecto se ve un instante como vinculado y después se revierte
+  }, e => console.error(e));
+  recorridoRef().collection("turnos").onSnapshot(snap => {
+    turnos = {};
+    snap.forEach(d => turnos[d.id] = d.data());
+    cargado.turnos = true; render();
+    if(hoja) renderHoja();
+  }, e => console.error(e));
+  auth.onAuthStateChanged(user => {
+    usuario = user;
+    cargado.auth = true; render();
+    if(hoja) renderHoja();
+  });
+}
+
+// ===== Página =====
+function render(){
+  if(!cargado.participantes || !cargado.turnos || !cargado.auth) return;
+  if(recorrido.borrador && !soyAdmin()){
+    mensaje(recorrido.nombre || "Turnos", "Este recorrido todavía no está publicado. Cuando esté listo, vas a poder anotarte desde este mismo link.");
+    return;
+  }
+  const fechas = fechasDelRecorrido(recorrido);
+  const mio = yo();
+  let h = `<div class="topbar"><a href="index.html">← Inicio</a><span class="der">${botonTema()}<a class="pill-rec" href="index.html?r=${encodeURIComponent(recorridoId)}">✅ Ir al recorrido →</a></span></div>
+    <header>${CARAS}<div><div class="eyebrow">${escapeHtml(recorrido.nombre || "")} · turnos</div><h1>¿Quién cuida a los gatos?</h1></div></header>
+    <p class="intro">Una persona por día. Elegí un día libre, poné tu nombre y, si hace falta, dejá un comentario.</p>`;
+  if(!fechas.length){
+    document.getElementById("app").innerHTML = h + `<div class="vacio">Este recorrido todavía no tiene fecha de inicio.</div>`;
+    return;
+  }
+  const cubiertos = turnosCubiertos(recorrido, turnos);
+  h += `<div class="resumen"><b>${cubiertos} de ${fechas.length} <span>cubiertos</span></b><div class="barra">${fechas.map(f => `<i class="${turnos[f] ? "ok" : ""}"></i>`).join("")}</div></div>`;
+  const misDias = mio ? fechas.filter(f => turnos[f] && turnos[f].pid === mio).length : 0;
+  if(!mio && filtro === "mis") filtro = "todos";
+  h += `<div class="controles">
+    ${mio ? `<div class="seg"><button data-filtro="todos" class="${filtro==="todos"?"on":""}">Todos</button><button data-filtro="mis" class="${filtro==="mis"?"on":""}">Mis días (${misDias})</button></div>` : ""}
+    <div class="seg vista"><button data-vista="cal" class="${vista==="cal"?"on":""}">Calendario</button><button data-vista="lista" class="${vista==="lista"?"on":""}">Lista</button></div></div>`;
+  h += vista === "cal" ? calendarioHTML(fechas, mio) : listaHTML(fechas, mio);
+  h += `<div class="pie">${pieHTML(mio)}</div>`;
+  document.getElementById("app").innerHTML = h;
+  bindPagina();
+}
+
+function pieHTML(mio){
+  const partes = [];
+  if(soyAdmin()) partes.push("🔧 Como admin podés anotar, cambiar o liberar cualquier día");
+  if(mio) partes.push(`Entraste como <b>${escapeHtml(nombreDe(mio))}</b> · <button data-salir>Salir</button>`);
+  else if(usuario) partes.push(`<button data-salir>Salir</button>`);
+  if(!abierto() && !soyAdmin()) partes.push("Este recorrido ya cerró: los turnos quedan como estaban.");
+  return partes.join("<br>");
+}
+
+function calendarioHTML(fechas, mio){
+  const primera = fechaDate(fechas[0]), ultima = fechaDate(fechas[fechas.length - 1]);
+  const desde = new Date(primera); desde.setDate(desde.getDate() - ((desde.getDay() + 6) % 7));   // lunes
+  const hasta = new Date(ultima); hasta.setDate(hasta.getDate() + (7 - ((hasta.getDay() + 6) % 7) - 1));   // domingo
+  const enRango = new Set(fechas);
+  const hoy = hoyISO();
+  if(!seleccionada || !enRango.has(seleccionada)){
+    // Con "Mis días", tu próximo día; si no, hoy (o el primer día libre que viene)
+    const mios = fechas.filter(f => turnos[f] && turnos[f].pid === mio);
+    seleccionada = (filtro === "mis" && (mios.find(f => f >= hoy) || mios[0]))
+      || (enRango.has(hoy) ? hoy : fechas.find(f => !turnos[f] && f >= hoy) || fechas[0]);
+  }
+  let h = `<div class="cal ${filtro === "mis" ? "filtro" : ""}">` + ["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => `<div class="dsem">${d}</div>`).join("");
+  for(const d = new Date(desde); d <= hasta; d.setDate(d.getDate() + 1)){
+    const f = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    // Cuando cambia el mes (o en el primer día) se aclara cuál es: "1 oct"
+    const mes = (d.getDate() === 1 || f === fechas[0]) ? ` <small>${MESES[d.getMonth()]}</small>` : "";
+    if(!enRango.has(f)){ h += `<div class="celda fuera"><span class="n">${d.getDate()}</span></div>`; continue; }
+    const t = turnos[f];
+    const clases = ["celda", t ? "ok" : "libre", t && t.pid === mio ? "mio" : "", f === hoy ? "hoy" : "", f < hoy ? "pasado" : "", f === seleccionada ? "sel" : ""].join(" ");
+    const titulo = `${fechaCorta(f)}: ${t ? nombreDe(t.pid) : "libre"}`;
+    h += t
+      ? `<button class="${clases}" data-fecha="${f}" title="${escapeHtml(titulo)}"><span class="n">${d.getDate()}${mes}</span>${t.comentario ? '<span class="pin"></span>' : ""}<span class="av-wrap">${avatarSVG(participantes[t.pid] || { nombre: t.nombre })}</span><span class="nom">${escapeHtml(nombreDe(t.pid))}</span></button>`
+      : `<button class="${clases}" data-fecha="${f}" title="${escapeHtml(titulo)}"><span class="n">${d.getDate()}${mes}</span><span class="mas">${f < hoy ? "—" : "+"}</span></button>`;
+  }
+  h += `</div><div class="cal-nota"><span><i></i>tiene comentario</span><span>Tocá un día para ver el detalle o anotarte</span></div>`;
+  return h + detalleHTML(seleccionada, mio);
+}
+
+function detalleHTML(f, mio){
+  const t = turnos[f];
+  if(!t){
+    return `<div class="detalle"><div class="t"><div class="f">${fechaCorta(f)}</div><b style="color:var(--libre-txt)">${f < hoyISO() ? "Nadie se anotó" : "Libre"}</b></div>
+      ${editable(f) ? `<button class="btn-sm" data-anotar="${f}">Anotarme</button>` : ""}</div>`;
+  }
+  return `<div class="detalle"><span class="av-wrap">${avatarSVG(participantes[t.pid] || { nombre: t.nombre })}</span>
+    <div class="t"><div class="f">${fechaCorta(f)}</div><b>${escapeHtml(nombreDe(t.pid))}${t.pid === mio ? '<span class="vos">VOS</span>' : ""}</b>${t.comentario ? `<div class="c">${escapeHtml(t.comentario)}</div>` : ""}</div>
+    ${puedeEditarTurno(f) ? `<button class="btn-sm sec" data-editar="${f}">Editar</button>` : ""}</div>`;
+}
+
+function listaHTML(fechas, mio){
+  const hoy = hoyISO();
+  const visibles = filtro === "mis" ? fechas.filter(f => turnos[f] && turnos[f].pid === mio) : fechas;
+  if(!visibles.length) return `<div class="vacio">Todavía no te anotaste en ningún día.</div>`;
+  return visibles.map(f => {
+    const d = fechaDate(f), t = turnos[f];
+    const fe = `<div class="fe"><small>${DS[d.getDay()]}</small><span>${d.getDate()}</span></div>`;
+    const extra = (f === hoy ? " hoy" : "") + (f < hoy ? " pasado" : "");
+    if(!t) return `<div class="fila libre${extra}" data-fila="${f}">${fe}<span class="libre-txt">${f < hoy ? "Nadie se anotó" : "Libre"}</span>${editable(f) ? `<button class="btn-sm" data-anotar="${f}">Anotarme</button>` : ""}</div>`;
+    return `<div class="fila ok${t.pid === mio ? " mio" : ""}${extra}" data-fila="${f}">${fe}<span class="av-wrap">${avatarSVG(participantes[t.pid] || { nombre: t.nombre })}</span>
+      <span class="t"><b>${escapeHtml(nombreDe(t.pid))}</b>${t.pid === mio ? '<span class="vos">VOS</span>' : ""}${t.comentario ? `<span class="c">${escapeHtml(t.comentario)}</span>` : ""}</span>
+      ${puedeEditarTurno(f) ? `<button class="btn-sm sec" data-editar="${f}">Editar</button>` : ""}</div>`;
+  }).join("");
+}
+
+function bindPagina(){
+  const app = document.getElementById("app");
+  app.querySelectorAll("[data-vista]").forEach(b => b.addEventListener("click", () => { vista = b.dataset.vista; guardarPref("lesgates_turnos_vista", vista); render(); }));
+  app.querySelectorAll("[data-filtro]").forEach(b => b.addEventListener("click", () => { filtro = b.dataset.filtro; seleccionada = null; render(); }));
+  app.querySelectorAll(".celda[data-fecha]").forEach(b => b.addEventListener("click", () => { seleccionada = b.dataset.fecha; render(); }));
+  app.querySelectorAll("[data-anotar]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); abrirHoja("anotar", b.dataset.anotar); }));
+  app.querySelectorAll("[data-editar]").forEach(b => b.addEventListener("click", e => { e.stopPropagation(); abrirHoja("editar", b.dataset.editar); }));
+  app.querySelectorAll("[data-salir]").forEach(b => b.addEventListener("click", () => auth.signOut()));
+}
+
+// ===== Hoja para anotarse o editar =====
+function abrirHoja(modo, fecha){
+  const mio = yo();
+  hoja = { modo, fecha, pid: modo === "editar" ? turnos[fecha].pid : mio, aviso: "", comentario: modo === "editar" ? (turnos[fecha].comentario || "") : "", ocupado: false };
+  document.getElementById("velo").classList.add("show");
+  document.body.style.overflow = "hidden";
+  renderHoja();
+}
+function cerrarHoja(){
+  hoja = null;
+  document.getElementById("velo").classList.remove("show");
+  document.body.style.overflow = "";
+}
+document.getElementById("velo").addEventListener("click", e => { if(e.target.id === "velo") cerrarHoja(); });
+
+// Hay que entrar (Google o código) si todavía no sos nadie en este recorrido; el admin no
+function necesitaEntrar(){ return !yo() && !soyAdmin(); }
+// Con Google y el nombre libre se vincula directo; si no, hace falta el código
+function necesitaCodigo(pid){
+  if(!pid || !necesitaEntrar()) return false;
+  return !usuario || esAnonimo(usuario) || !!participantes[pid].uid;
+}
+
+function personasHTML(sel){
+  return `<div class="personas">${Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b))).map(pid =>
+    `<button class="persona ${pid === sel ? "sel" : ""}" data-persona="${pid}"><span class="av-wrap">${avatarSVG(participantes[pid])}</span><span class="nom">${escapeHtml(nombreDe(pid))}</span></button>`).join("")}</div>`;
+}
+
+function renderHoja(){
+  if(!hoja) return;
+  const el = document.getElementById("hoja");
+  const { modo, fecha } = hoja;
+  const comentarioEl = el.querySelector("#hComentario");
+  if(comentarioEl) hoja.comentario = comentarioEl.value;
+  const codigoEl = el.querySelector("#hCodigo");
+  if(codigoEl) hoja.codigo = codigoEl.value;
+  // Si alguien tomó el día mientras tenías la hoja abierta
+  if(modo === "anotar" && turnos[fecha] && !hoja.guardando) hoja.aviso = "Alguien se anotó en este día recién. Elegí otro.", hoja.ocupado = true;
+  if(modo === "editar" && !turnos[fecha] && !hoja.guardando){ cerrarHoja(); return; }
+  const mio = yo();
+  // Solo se redibuja si cambió algo que se ve en la hoja (así no se pierde lo que estás escribiendo
+  // cuando otra persona se anota en otro día)
+  const clave = JSON.stringify([modo, fecha, hoja.pid, hoja.aviso, hoja.ocupado, !!hoja.guardando, mio, soyAdmin(), usuario && usuario.uid,
+    hoja.pid && necesitaCodigo(hoja.pid), turnos[fecha] && turnos[fecha].pid, Object.keys(participantes).map(p => p + ":" + nombreDe(p)).join()]);
+  if(clave === hoja.clave) return;
+  hoja.clave = clave;
+  let h = `<div class="asa"></div>`;
+  if(modo === "anotar"){
+    h += `<h2>Anotarme el ${fechaLarga(fecha)}</h2><p class="sub">${escapeHtml(recorrido.nombre || "")} · ${fechaCorta(fecha)}</p>`;
+    if(hoja.aviso) h += `<div class="aviso">${escapeHtml(hoja.aviso)}</div>`;
+    if(soyAdmin()){
+      h += `<span class="etq">¿Quién viene?</span>${personasHTML(hoja.pid)}<p class="ayuda">Como admin podés anotar a cualquiera.</p>`;
+    } else if(mio){
+      h += quienElegidoHTML(mio, false);
+    } else if(!hoja.pid){
+      h += `<span class="etq">¿Quién sos?</span>${personasHTML(null)}<p class="ayuda">¿No estás en la lista? Avisale a quien organiza el recorrido.</p>`;
+    } else {
+      h += quienElegidoHTML(hoja.pid, true);
+      if(necesitaCodigo(hoja.pid)){
+        h += `<span class="etq">Tu código</span><input class="campo codigo-input" id="hCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······" value="${escapeHtml(hoja.codigo || "")}">
+          <p class="ayuda">El de 6 números que te pasó quien organiza. Lo pedimos una sola vez en este celular.</p>`;
+      } else {
+        h += `<p class="ayuda">Tu cuenta de Google (${escapeHtml(usuario.email || "")}) va a quedar vinculada a ${escapeHtml(nombreDe(hoja.pid))}.</p>`;
+      }
+    }
+  } else {
+    const t = turnos[fecha] || {};
+    h += `<h2>${t.pid === mio ? "Tu día" : "Turno"}: ${fechaLarga(fecha)}</h2><p class="sub">${escapeHtml(recorrido.nombre || "")} · ${t.pid === mio ? "te anotaste como" : "anotado:"} <b>${escapeHtml(nombreDe(t.pid))}</b></p>`;
+    if(hoja.aviso) h += `<div class="aviso">${escapeHtml(hoja.aviso)}</div>`;
+    if(soyAdmin()) h += `<span class="etq">¿Quién viene?</span>${personasHTML(hoja.pid)}`;
+  }
+  const mostrarForm = !(modo === "anotar" && !soyAdmin() && !mio && !hoja.pid);
+  if(mostrarForm){
+    h += `<span class="etq">Comentario (opcional)</span>
+      <textarea class="campo" id="hComentario" rows="3" maxlength="400" placeholder="Horario, si tenés llave, algo que notaste de los gatos…">${escapeHtml(hoja.comentario || "")}</textarea>
+      <div class="cont" id="hCont">${(hoja.comentario || "").length}/400</div>
+      <div class="acciones"><button class="sec" data-h="cancelar">Cancelar</button><button data-h="guardar" ${hoja.ocupado || hoja.guardando ? "disabled" : ""}>${modo === "anotar" && necesitaCodigo(hoja.pid) ? "Entrar y anotarme" : "Guardar"}</button></div>`;
+    if(modo === "anotar" && necesitaCodigo(hoja.pid) && !usuario)
+      h += `<button class="o-google" data-h="google">${GOOGLE_SVG} o entrá con Google</button>`;
+    if(modo === "editar") h += `<button class="liberar" data-h="liberar">Liberar este día</button>`;
+  } else {
+    h += `<div class="acciones"><button class="sec" data-h="cancelar">Cancelar</button></div>`;
+  }
+  const activo = document.activeElement;
+  const foco = activo && el.contains(activo) && activo.id ? { id: activo.id, pos: activo.selectionStart || 0 } : null;
+  el.innerHTML = h;
+  el.querySelectorAll("[data-persona]").forEach(b => b.addEventListener("click", () => { hoja.pid = b.dataset.persona; hoja.aviso = hoja.ocupado ? hoja.aviso : ""; renderHoja(); }));
+  el.querySelectorAll("[data-cambiar]").forEach(b => b.addEventListener("click", () => { hoja.pid = null; hoja.aviso = hoja.ocupado ? hoja.aviso : ""; renderHoja(); }));
+  el.querySelectorAll("[data-salir]").forEach(b => b.addEventListener("click", () => { cerrarHoja(); auth.signOut(); }));
+  const ta = el.querySelector("#hComentario");
+  if(ta) ta.addEventListener("input", () => { hoja.comentario = ta.value; document.getElementById("hCont").textContent = ta.value.length + "/400"; });
+  const cod = el.querySelector("#hCodigo");
+  if(cod) cod.addEventListener("input", () => { hoja.codigo = cod.value; });
+  if(foco && el.querySelector("#" + foco.id)){ const f = el.querySelector("#" + foco.id); f.focus(); try{ f.setSelectionRange(foco.pos, foco.pos); }catch(e){} }
+  const b = sel => el.querySelector(`[data-h="${sel}"]`);
+  b("cancelar").addEventListener("click", cerrarHoja);
+  if(b("guardar")) b("guardar").addEventListener("click", guardarHoja);
+  if(b("google")) b("google").addEventListener("click", entrarConGoogleYSeguir);
+  if(b("liberar")) b("liberar").addEventListener("click", liberar);
+}
+
+function quienElegidoHTML(pid, cambiable){
+  return `<div class="quien-elegido"><span class="av-wrap">${avatarSVG(participantes[pid])}</span><span class="nom">${cambiable ? "" : "Te anotás como "}${escapeHtml(nombreDe(pid))}</span>
+    ${cambiable ? `<button data-cambiar>Cambiar</button>` : `<button data-salir>No soy ${escapeHtml(nombreDe(pid))}</button>`}</div>`;
+}
+
+async function entrarConGoogleYSeguir(){
+  await loginGoogle();
+  if(hoja) renderHoja();   // con Google ya no hace falta el código (salvo que el nombre esté vinculado a otra cuenta)
+}
+
+async function guardarHoja(){
+  const comentario = (document.getElementById("hComentario").value || "").trim().slice(0, 400);
+  const { modo, fecha } = hoja;
+  const pid = soyAdmin() ? hoja.pid : (modo === "editar" ? turnos[fecha].pid : (yo() || hoja.pid));
+  if(!pid){ hoja.aviso = soyAdmin() ? "Elegí quién viene." : "Tocá tu nombre."; renderHoja(); return; }
+  const btn = document.querySelector('[data-h="guardar"]');
+  btn.disabled = true;
+  hoja.guardando = true;
+  try{
+    // 1) Entrar, si hace falta
+    if(modo === "anotar" && necesitaEntrar()){
+      if(necesitaCodigo(pid)){
+        const codigo = (document.getElementById("hCodigo").value || "").replace(/\D/g, "");
+        if(codigo.length !== 6) throw { aviso: "El código tiene 6 números." };
+        try{ await vincularConCodigo(recorridoId, pid, codigo); }
+        catch(e){ console.warn(e); throw { aviso: mensajeErrorCodigo(e, nombreDe(pid)) }; }
+      } else {
+        try{ await vincularConGoogle(recorridoId, pid); }
+        catch(e){ console.warn(e); throw { aviso: `No se pudo vincular tu cuenta a ${nombreDe(pid)}: puede que alguien lo haya elegido recién. Probá con tu código.` }; }
+      }
+      usuario = auth.currentUser;
+      participantes[pid] = { ...participantes[pid], uid: usuario.uid };
+    }
+    // 2) Guardar el turno
+    const ref = recorridoRef().collection("turnos").doc(fecha);
+    const datos = { fecha, pid, nombre: nombreDe(pid).slice(0, 40), comentario, uid: auth.currentUser.uid, actualizado: Date.now() };
+    if(modo === "anotar"){
+      // Transacción: si alguien lo tomó en el medio, no se pisa
+      await db.runTransaction(async tx => {
+        const actual = await tx.get(ref);
+        if(actual.exists) throw { ocupado: true };
+        tx.set(ref, datos);
+      });
+      toast(`Listo: ${fechaCorta(fecha)} es de ${nombreDe(pid)}`);
+    } else {
+      await ref.update(datos);
+      toast("Cambios guardados");
+    }
+    seleccionada = fecha;
+    cerrarHoja();
+    render();
+  }catch(e){
+    if(!hoja) return;
+    hoja.guardando = false;
+    if(e && e.ocupado){ hoja.aviso = "Alguien se anotó en este día recién. Elegí otro."; hoja.ocupado = true; }
+    else if(e && e.aviso) hoja.aviso = e.aviso;
+    else { console.error(e); hoja.aviso = e && e.code === "permission-denied" ? "No se pudo guardar: este día ya no se puede cambiar." : "No se pudo guardar. Revisá la conexión y probá de nuevo."; }
+    hoja.clave = null;   // redibujar siempre, para volver a habilitar Guardar
+    renderHoja();
+  }
+}
+
+async function liberar(){
+  const { fecha } = hoja;
+  if(!confirm(`¿Liberar el ${fechaLarga(fecha)}? Va a quedar libre para que se anote otra persona.`)) return;
+  hoja.guardando = true;
+  try{
+    await recorridoRef().collection("turnos").doc(fecha).delete();
+    cerrarHoja();
+    toast(`${fechaCorta(fecha)} quedó libre`);
+  }catch(e){
+    console.error(e);
+    if(!hoja) return;
+    hoja.guardando = false;
+    hoja.aviso = "No se pudo liberar. Revisá la conexión y probá de nuevo.";
+    hoja.clave = null;
+    renderHoja();
+  }
+}
+
+init();
+</script>
+</body>
+</html>

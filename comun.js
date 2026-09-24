@@ -248,6 +248,45 @@ function avatarSVG(p, texto){
   return `<svg class="av" viewBox="-11 -21.5 22 36.5" shape-rendering="crispEdges" aria-label="${escapeHtml(p.nombre || "")}">${cuerpoAvatarSVG(combo)}${cabeza}</svg>`;
 }
 
+// ===== Entrar a un recorrido (lo usan el recorrido y la página de turnos) =====
+// Con Google: se vincula la cuenta a un nombre libre de la lista.
+async function vincularConGoogle(recorridoId, pid){
+  await db.collection("recorridos").doc(recorridoId).collection("participantes").doc(pid)
+    .update({ uid: auth.currentUser.uid, reclamado: Date.now() });
+}
+// Con código: sesión anónima + en el mismo lote el intento (ingresos/{uid}) y el vínculo; las reglas
+// solo lo aceptan si el código coincide con el del participante.
+async function vincularConCodigo(recorridoId, pid, codigo){
+  if(!auth.currentUser) await auth.signInAnonymously();
+  const ref = db.collection("recorridos").doc(recorridoId);
+  const uid = auth.currentUser.uid;
+  const lote = db.batch();
+  lote.set(ref.collection("ingresos").doc(uid), { pid, codigo });
+  lote.update(ref.collection("participantes").doc(pid), { uid, reclamado: Date.now() });
+  await lote.commit();
+  return uid;
+}
+function mensajeErrorCodigo(e, nombre){
+  if(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation")
+    return "El ingreso con código todavía no está activado. Avisale a quien te invitó (Firebase → Authentication → Anónimo).";
+  if(e.code === "permission-denied")
+    return "Ese código no es correcto para " + nombre + ". Revisalo o pedile uno nuevo a quien te invitó.";
+  return "No se pudo entrar. Revisá la conexión y probá de nuevo.";
+}
+
+// ===== Turnos: un documento por fecha ("2026-10-10") con quién viene ese día =====
+function fechasDelRecorrido(r){
+  if(!r || !r.fechaInicio) return [];
+  const [y, m, d] = r.fechaInicio.split("-").map(Number);
+  return Array.from({ length: r.dias || 3 }, (_, i) => {
+    const f = new Date(y, m - 1, d + i);
+    return `${f.getFullYear()}-${String(f.getMonth()+1).padStart(2,"0")}-${String(f.getDate()).padStart(2,"0")}`;
+  });
+}
+function turnosCubiertos(r, turnos){
+  return fechasDelRecorrido(r).filter(f => turnos[f]).length;
+}
+
 // ===== Ranking global: puntos por tarea tildada, sumando todos los recorridos =====
 async function calcularRanking(){
   const [partsSnap, tareasSnap] = await Promise.all([

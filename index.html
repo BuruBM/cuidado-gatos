@@ -352,22 +352,29 @@
   details.acc .acc-body ul{margin:0; padding-left:16px;}
 
   .recorridos-grid{display:flex; flex-direction:column; gap:9px;}
-  .recorrido-btn{display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:14px 16px; cursor:pointer; font-family:'Karla',sans-serif; color:var(--ink); box-shadow:var(--shadow);}
-  .recorrido-btn b{display:block; font-size:16px; font-family:'Fraunces',serif; font-weight:600;}
+  .recorrido-btn{display:flex; justify-content:space-between; align-items:center; width:100%; text-align:left; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:10px 14px; cursor:pointer; font-family:'Karla',sans-serif; color:var(--ink); box-shadow:var(--shadow);}
+  .recorrido-btn b{display:block; font-size:15px; font-family:'Fraunces',serif; font-weight:600;}
   .recorrido-btn span{font-size:12.5px; color:var(--ink-soft);}
-  .recorrido-btn::after{content:"→"; flex:none; width:32px; height:32px; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; margin-left:10px;}
+  .recorrido-btn::after{content:"→"; flex:none; width:28px; height:28px; border-radius:50%; background:var(--teal); color:#fff; display:flex; align-items:center; justify-content:center; font-size:15px; margin-left:10px;}
   .recorrido-btn:hover{border-color:var(--teal);}
   .recorrido-btn.pasado{box-shadow:none; background:rgba(255,255,255,0.55);}
   .recorrido-btn.pasado::after{background:#A8A08F;}
 
-  .tu-recorrido{display:flex; align-items:center; gap:14px; width:100%; text-align:left; background:var(--teal); color:#F7F3EA; border:none; border-radius:18px; padding:16px 18px; margin-bottom:10px; cursor:pointer; font-family:'Karla',sans-serif; box-shadow:0 4px 12px rgba(53,95,88,0.25);}
+  .tu-recorrido{display:flex; align-items:center; gap:12px; width:100%; text-align:left; background:var(--teal); color:#F7F3EA; border:none; border-radius:16px; padding:10px 14px; margin-bottom:8px; cursor:pointer; font-family:'Karla',sans-serif; box-shadow:0 4px 12px rgba(53,95,88,0.25);}
   .tu-recorrido .tr-av{width:44px; height:44px; border-radius:50%; background:rgba(255,255,255,0.18); display:flex; align-items:center; justify-content:center; font-family:'Fraunces',serif; font-weight:700; font-size:18px; overflow:hidden; flex:none;}
   .tu-recorrido .tr-av img{width:100%; height:100%; object-fit:cover; image-rendering:pixelated;}
   .tu-recorrido .tr-texto{flex:1; min-width:0;}
   .tu-recorrido .tr-eyebrow{display:block; font-size:11px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; opacity:0.75;}
-  .tu-recorrido b{display:block; font-family:'Fraunces',serif; font-size:19px; font-weight:600; margin:1px 0 2px;}
-  .tu-recorrido .tr-detalle{font-size:13px; opacity:0.85;}
-  .tu-recorrido .tr-ir{flex:none; background:#F7F3EA; color:var(--teal); border-radius:100px; padding:8px 14px; font-weight:700; font-size:13.5px;}
+  .tu-recorrido b{display:block; font-family:'Fraunces',serif; font-size:16.5px; font-weight:600; margin:1px 0 2px;}
+  .tu-recorrido .tr-detalle{font-size:12.5px; opacity:0.85;}
+  .tu-recorrido .tr-ir{flex:none; background:#F7F3EA; color:var(--teal); border-radius:100px; padding:6px 12px; font-weight:700; font-size:13px;}
+  .turnos-home{display:flex; align-items:center; gap:9px; width:100%; background:var(--surface); border:1px solid var(--line); border-radius:14px; padding:9px 12px; margin-bottom:8px; font-family:'Karla',sans-serif; font-size:13.5px; color:var(--ink); text-decoration:none; box-shadow:var(--shadow);}
+  .turnos-home .th-t{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .turnos-home .th-barra{flex:1; min-width:40px; display:grid; grid-auto-flow:column; grid-auto-columns:1fr; gap:2px;}
+  .turnos-home .th-barra i{height:7px; border-radius:2px; background:var(--orange-soft); border:1px dashed var(--orange);}
+  .turnos-home .th-barra i.ok{background:var(--success); border:1px solid var(--success);}
+  .turnos-home .th-ir{flex:none; font-weight:700; font-size:13px; white-space:nowrap;}
+  html.dark .turnos-home .th-barra i.ok{background:#93B566; border-color:#93B566;}
   html.dark .tu-recorrido{background:#2F5A53;}
   .landing-footer{text-align:center; margin-top:40px; font-size:12px; color:var(--ink-soft);}
   .landing-footer a{color:var(--ink-soft);}
@@ -397,10 +404,12 @@
 
   /* ===== Página del recorrido: accesos rápidos y guía plegable ===== */
   html{scroll-behavior:smooth;}
-  .app-nav{display:flex; flex-wrap:nowrap; gap:5px; margin-top:14px; overflow-x:auto; scrollbar-width:none;}
+  .app-nav{display:flex; flex-wrap:nowrap; gap:4px; margin-top:14px; overflow-x:auto; scrollbar-width:none;}
   .app-nav::-webkit-scrollbar{display:none;}
-  .app-nav a{flex:1 0 auto; text-align:center; white-space:nowrap; font-size:12.5px; font-weight:700; color:var(--ink); text-decoration:none; background:var(--surface); border:1.5px solid var(--line); border-radius:100px; padding:6px 9px;}
-  @media (max-width:350px){ .app-nav{gap:4px;} .app-nav a{font-size:11px; padding:5px 6px;} }
+  .app-nav a{flex:1 0 auto; text-align:center; white-space:nowrap; font-size:12.5px; font-weight:700; color:var(--ink); text-decoration:none; background:var(--surface); border:1.5px solid var(--line); border-radius:100px; padding:6px 7px;}
+  @media (max-width:390px){ .app-nav{gap:3px;} .app-nav a{font-size:11.5px; padding:5px 5px;} }
+  @media (max-width:370px){ .app-nav a{font-size:11px; padding:5px 4px;} }
+  @media (max-width:340px){ .app-nav a{font-size:10px; padding:4px 3px;} }
   .tareas-ancla{scroll-margin-top:10px;}
   #guia, #avisos, #muro{scroll-margin-top:12px;}
   .guia{margin:26px 0 18px;}
@@ -456,7 +465,7 @@
   .standing-row .dot-color:has(svg.av){height:36px !important; min-width:22px;}
   .otro-marcador:has(svg.av){height:46px !important; transform:translate(-50%, -96%) !important; filter:drop-shadow(0 1px 1.5px rgba(43,38,32,0.45));}
   .gate-persona-av:has(svg.av){height:44px !important; min-width:36px;}
-  .tu-recorrido .tr-av:has(svg.av){height:56px !important; min-width:44px;}
+  .tu-recorrido .tr-av:has(svg.av){height:44px !important; min-width:34px;}
   .tu-recorrido .tr-av svg.av{filter:drop-shadow(0 0 0.8px #F7F3EA) drop-shadow(0 0 0.8px #F7F3EA);}
 </style>
 <link rel="stylesheet" href="tema-oscuro.css">
@@ -475,6 +484,7 @@
   </div>
 
   <div id="tuRecorrido" style="display:none;"></div>
+  <div id="turnosHome"></div>
   <div id="activosWrap">
     <h2 class="landing-section-title" style="--sec:var(--teal); margin-top:6px;">Recorridos activos</h2>
     <div class="recorridos-grid" id="recorridosActivos">Cargando...</div>
@@ -619,7 +629,7 @@
     <p class="sub" id="pageSubtitle">Gracias por bancarnos estos días. Acá está todo lo que necesitás, con checklist para cada día.</p>
     <div class="session-line" id="appSession"></div>
     <nav class="app-nav">
-      <a href="#tareas">✅ Tareas</a><a href="#guia">📖 Guía</a><a href="#avisos">🔔 Avisos</a><a href="#muro">💬 Muro</a>
+      <a href="#tareas">✅ Tareas</a><a id="navTurnos" href="turnos.html">🗓️ Turnos</a><a href="#guia">📖 Guía</a><a href="#avisos">🔔 Avisos</a><a href="#muro">💬 Muro</a>
     </nav>
   </header>
 
@@ -1129,6 +1139,16 @@ async function initGate(){
     if(ingresandoConCodigo) return;   // el ingreso con código sigue solo
     gateError("");
     document.getElementById("gateChips").innerHTML = "";
+    // Borrador: solo el admin lo puede abrir
+    if(recorrido.borrador && !esAdmin(user)){
+      mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido todavía no está publicado. Cuando esté listo, vas a poder entrar desde este mismo link.");
+      document.getElementById("gateLoginStep").style.display = "none";
+      document.getElementById("gateNameStep").style.display = "none";
+      document.getElementById("gateCodigoStep").style.display = "none";
+      document.getElementById("gateSession").innerHTML = user ? `<button id="gateLogout">Salir</button>` : "";
+      if(user) document.getElementById("gateLogout").addEventListener("click", () => auth.signOut());
+      return;
+    }
     if(!user){
       mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido es solo para quienes cuidan a Milo y Zoe. Entrá con Google o con tu código.");
       document.getElementById("gateLoginStep").style.display = "block";
@@ -1203,7 +1223,7 @@ function renderPersonasGate(){
 
 async function reclamar(pid){
   try{
-    await recorridoRef().collection("participantes").doc(pid).update({ uid: usuario.uid, reclamado: Date.now() });
+    await vincularConGoogle(recorridoId, pid);
     participantes[pid].uid = usuario.uid;
     entrar(pid);
   }catch(e){
@@ -1265,24 +1285,15 @@ async function entrarConCodigo(){
   btn.disabled = true;
   ingresandoConCodigo = true;
   try{
-    if(!auth.currentUser) await auth.signInAnonymously();
+    await vincularConCodigo(recorridoId, pidCodigo, codigo);
     usuario = auth.currentUser;
-    const lote = db.batch();
-    lote.set(recorridoRef().collection("ingresos").doc(usuario.uid), { pid: pidCodigo, codigo });
-    lote.update(recorridoRef().collection("participantes").doc(pidCodigo), { uid: usuario.uid, reclamado: Date.now() });
-    await lote.commit();
     participantes[pidCodigo].uid = usuario.uid;
     ingresandoConCodigo = false;
     entrar(pidCodigo);
   }catch(e){
     console.warn(e);
     ingresandoConCodigo = false;
-    if(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation")
-      gateError("El ingreso con código todavía no está activado. Avisale a quien te invitó (Firebase → Authentication → Anónimo).");
-    else if(e.code === "permission-denied")
-      gateError("Ese código no es correcto para " + nombreDe(pidCodigo) + ". Revisalo o pedile uno nuevo a quien te invitó.");
-    else
-      gateError("No se pudo entrar. Revisá la conexión y probá de nuevo.");
+    gateError(mensajeErrorCodigo(e, nombreDe(pidCodigo)));
   }
   btn.disabled = false;
 }
@@ -1334,6 +1345,7 @@ function startApp(){
     else if(f === "#C79A2E") r.setAttribute("fill", combo.pantalon);
   });
   const base = `index.html?r=${recorridoId}`;
+  document.getElementById("navTurnos").href = `turnos.html?r=${recorridoId}`;
   document.getElementById("appSession").innerHTML = modoAdmin
     ? `🔧 <b>Modo admin</b> · <a href="${base}">Ver como participante</a> · <button id="appLogout">Salir</button> · ${botonTema()}`
     : `Entraste como <b>${escapeHtml(participanteNombre)}</b> · <button id="appLogout">Salir</button>` + (esAdmin(usuario) ? ` · <a href="${base}&modo=admin">🔧 Modo admin</a>` : "") + ` · ${botonTema()}`;
@@ -2174,6 +2186,7 @@ async function loadRecorridosActivos(){
     const activos = [], pasados = [];
     snap.forEach(doc => {
       const r = doc.data();
+      if(r.borrador) return;   // los borradores no se muestran hasta que el admin los publica
       const terminado = !!r.fechaInicio && diaDelRecorrido(r) > (r.dias || 3);
       (r.activo && !terminado ? activos : pasados).push(doc);
     });
@@ -2191,10 +2204,31 @@ async function loadRecorridosActivos(){
     pasados.forEach(doc => pasadosEl.appendChild(botonRecorrido(doc, true)));
     document.getElementById("pasadosWrap").style.display = pasados.length ? "block" : "none";
     renderTuRecorrido();
+    renderTurnosHome(activos);
   }catch(e){
     console.error(e);
     el.innerHTML = "<p style='color:#A65136; font-size:14px;'>Error cargando recorridos.</p>";
   }
+}
+
+// Turnos de cada recorrido activo: una línea con cuántos días están cubiertos
+async function renderTurnosHome(activos){
+  const el = document.getElementById("turnosHome");
+  const conFecha = activos.filter(doc => doc.data().fechaInicio);
+  const lineas = await Promise.all(conFecha.map(async doc => {
+    const r = doc.data();
+    const turnos = {};
+    try{ (await doc.ref.collection("turnos").get()).forEach(t => turnos[t.id] = t.data()); }
+    catch(e){ console.error(e); }
+    const fechas = fechasDelRecorrido(r);
+    const cubiertos = turnosCubiertos(r, turnos);
+    const nombre = conFecha.length > 1 ? ` · ${escapeHtml(r.nombre || "")}` : "";
+    return `<a class="turnos-home" href="turnos.html?r=${doc.id}"><span>🗓️</span>
+      <span class="th-t"><b>Turnos</b>${nombre} · ${cubiertos} de ${fechas.length} cubiertos</span>
+      <span class="th-barra">${fechas.map(f => `<i class="${turnos[f] ? "ok" : ""}"></i>`).join("")}</span>
+      <span class="th-ir">Ver →</span></a>`;
+  }));
+  el.innerHTML = lineas.join("");
 }
 
 function botonRecorrido(doc, pasado){
