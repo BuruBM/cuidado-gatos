@@ -16,9 +16,31 @@ service cloud.firestore {
         && request.auth.token.email in ['bm.blancom@gmail.com', 'barbarabmontero@gmail.com'];
     }
 
+    // ===== Quién es parte de qué =====
+    // Cada celular que entró a un recorrido (con su código, o vinculado antes con Google) tiene un
+    // documento recorridos/{rid}/miembros/{uid} = { pid }. Una persona puede tener varios celulares.
+    // Además, miembros/{uid} (arriba de todo) marca que es parte de Les Gates: ve la home, el podio
+    // y el muro global.
+    function miembroDe(rid) {
+      return signedIn() && exists(/databases/$(database)/documents/recorridos/$(rid)/miembros/$(request.auth.uid));
+    }
+    function miembroGlobal() {
+      return signedIn() && exists(/databases/$(database)/documents/miembros/$(request.auth.uid));
+    }
+    function pidEn(rid) {
+      return get(/databases/$(database)/documents/recorridos/$(rid)/miembros/$(request.auth.uid)).data.pid;
+    }
+
+    // Soy esta persona del recorrido: desde cualquiera de mis celulares, o el último con el que entré
     function soyParticipante(rid, pid) {
       return signedIn()
-        && get(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(pid)).data.get('uid', null) == request.auth.uid;
+        && ((miembroDe(rid) && pidEn(rid) == pid)
+            || get(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(pid)).data.get('uid', null) == request.auth.uid);
+    }
+
+    // El recorrido (nombre, fechas) lo ven el admin y sus personas, si no es un borrador
+    function puedoVerRecorrido(rid, r) {
+      return isAdmin() || (miembroDe(rid) && r.get('borrador', false) != true);
     }
 
     // Un recorrido está abierto mientras está activo, publicado y no pasó su día de gracia (el día
@@ -46,10 +68,6 @@ service cloud.firestore {
         && request.resource.data.mensaje is string
         && request.resource.data.mensaje.size() > 0
         && request.resource.data.mensaje.size() <= 2000;
-    }
-
-    function conGoogle() {
-      return signedIn() && request.auth.token.firebase.sign_in_provider != 'anonymous';
     }
 
     // Código personal de un participante (lo genera el admin; nadie más lo puede leer)
@@ -86,19 +104,48 @@ service cloud.firestore {
       return signedIn() && resource.data.get('uid', null) == request.auth.uid;
     }
 
+    // Código -> a qué recorrido y persona corresponde. Solo se puede leer sabiendo el código
+    // (no se pueden listar); lo escribe el admin.
+    match /accesos/{codigo} {
+      allow get: if signedIn();
+      allow list: if isAdmin();
+      allow write: if isAdmin();
+    }
+
+    // "Soy parte de Les Gates": se crea al entrar a un recorrido (en el mismo lote que la membresía)
+    match /miembros/{uid} {
+      allow get: if signedIn() && uid == request.auth.uid;
+      allow list: if isAdmin();
+      allow create, update: if isAdmin()
+        || (signedIn() && uid == request.auth.uid
+            && request.resource.data.keys().hasOnly(['rid'])
+            && existsAfter(/databases/$(database)/documents/recorridos/$(request.resource.data.rid)/miembros/$(uid)));
+      allow delete: if isAdmin();
+    }
+
     match /recorridos/{rid} {
-      allow read: if true;
+      allow read: if puedoVerRecorrido(rid, resource.data);
       allow write: if isAdmin();
 
+      // Membresía de cada celular: la crea quien acaba de entrar con su código (o quien ya estaba
+      // vinculado a ese nombre); la ve cada uno la suya, y el admin todas
+      match /miembros/{uid} {
+        allow get: if signedIn() && uid == request.auth.uid;
+        allow list: if isAdmin();
+        allow create, update: if isAdmin()
+          || (signedIn() && uid == request.auth.uid
+              && request.resource.data.keys().hasOnly(['pid', 'uid', 'desde'])
+              && request.resource.data.uid == uid
+              && getAfter(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(request.resource.data.pid)).data.get('uid', null) == uid);
+        allow delete: if isAdmin();
+      }
+
       match /participantes/{pid} {
-        allow read: if true;
+        // Las personas del recorrido (y de Les Gates, por el podio) ven los nombres y fotos;
+        // cada uno puede ver su propio nombre aunque todavía no tenga la membresía (para pasarse solo)
+        allow read: if isAdmin() || miembroGlobal() || (signedIn() && resource.data.get('uid', null) == request.auth.uid);
         allow create, delete: if isAdmin();
         allow update: if isAdmin()
-          // Vincular tu cuenta de Google a un nombre libre de la lista
-          || (conGoogle()
-              && resource.data.get('uid', null) == null
-              && request.resource.data.uid == request.auth.uid
-              && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid', 'reclamado']))
           // Entrar con el código personal: en el mismo lote se escribe ingresos/{uid} con el código,
           // que tiene que coincidir con el del participante (vale aunque el nombre ya esté vinculado:
           // así se puede entrar desde otro celular)
@@ -109,12 +156,10 @@ service cloud.firestore {
               && getAfter(/databases/$(database)/documents/recorridos/$(rid)/ingresos/$(request.auth.uid)).data.codigo == codigoDe(rid, pid))
           // Guardar tus propias preferencias (recordatorios, pop-ups vistos)
           // Marcar avisos como vistos: siempre
-          || (signedIn()
-              && resource.data.get('uid', null) == request.auth.uid
+          || (soyParticipante(rid, pid)
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['vioPopupGlobal', 'popupPersonal', 'vioCierre']))
           // Recordatorios y "Terminé mis días": solo con el recorrido abierto
-          || (signedIn()
-              && resource.data.get('uid', null) == request.auth.uid
+          || (soyParticipante(rid, pid)
               && abierto(rid)
               && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['notif', 'vioPopupGlobal', 'popupPersonal', 'vioCierre', 'cierre', 'actualizado']));
       }
@@ -122,7 +167,7 @@ service cloud.firestore {
       // Checklist compartido: cada tarea de cada día es un documento "dia_key".
       // Solo se tilda si nadie la tildó antes (create) y solo la destilda quien la tildó.
       match /tareas/{tid} {
-        allow read: if true;
+        allow read: if isAdmin() || miembroGlobal();
         allow create: if isAdmin()
           || (soyParticipante(rid, request.resource.data.pid)
               && abierto(rid)
@@ -136,7 +181,7 @@ service cloud.firestore {
       // Turnos: un documento por fecha. Solo se toma un día libre (create); después solo lo cambia
       // o lo libera quien lo tomó (o el admin)
       match /turnos/{fecha} {
-        allow read: if true;
+        allow read: if isAdmin() || miembroDe(rid);
         allow create: if isAdmin()
           || (soyParticipante(rid, request.resource.data.pid)
               && abierto(rid)
@@ -169,29 +214,34 @@ service cloud.firestore {
       }
 
       match /comentarios/{cid} {
-        allow read: if true;
-        allow create: if signedIn() && comentarioValido() && (isAdmin() || abierto(rid));
+        allow read: if isAdmin() || miembroDe(rid);
+        allow create: if comentarioValido() && (isAdmin() || (miembroDe(rid) && abierto(rid)));
         allow update: if (isAdmin() && request.resource.data.mensaje is string)
           || (comentarioPropio() && comentarioValido() && abierto(rid));
         allow delete: if isAdmin() || (comentarioPropio() && abierto(rid));
       }
     }
 
-    // Muro global
+    // Muro global: para quienes son parte de Les Gates
     match /comentarios/{cid} {
-      allow read: if true;
-      allow create: if signedIn() && comentarioValido();
+      allow read: if isAdmin() || miembroGlobal();
+      allow create: if comentarioValido() && (isAdmin() || miembroGlobal());
       allow update: if (isAdmin() && request.resource.data.mensaje is string)
         || (comentarioPropio() && comentarioValido());
       allow delete: if isAdmin() || comentarioPropio();
     }
 
-    // Ranking global (consultas sobre todos los recorridos)
+    // Ranking global (consultas sobre todos los recorridos): solo para quienes son parte de Les Gates
+    // (cada uno puede buscar sus propios nombres, para pasarse solo al sistema de miembros)
     match /{path=**}/participantes/{pid} {
-      allow read: if true;
+      allow read: if isAdmin() || miembroGlobal() || (signedIn() && resource.data.get('uid', null) == request.auth.uid);
+    }
+    // "¿En qué recorridos estoy?": cada uno busca sus propias membresías
+    match /{path=**}/miembros/{uid} {
+      allow read: if isAdmin() || (signedIn() && resource.data.get('uid', null) == request.auth.uid);
     }
     match /{path=**}/tareas/{tid} {
-      allow read: if true;
+      allow read: if isAdmin() || miembroGlobal();
     }
   }
 }

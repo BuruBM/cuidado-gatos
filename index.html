@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="theme-color" content="#F2EEE1">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -300,6 +301,8 @@
   .gate-card{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:26px 22px; box-shadow:var(--shadow); text-align:center;}
   .gate-card h1{font-family:'Fraunces',serif; font-size:24px; margin:0 0 6px;}
   .gate-card p{color:var(--ink-soft); font-size:14px; margin:0 0 18px;}
+  .gate-card p.gate-ayuda{font-size:12.5px; margin:10px 0 0;}
+  .gate-card p.gate-o{font-size:13px; margin:18px 0 8px;}
   .gate-input{width:100%; padding:12px 14px; border-radius:12px; border:1.5px solid var(--line); font-family:'Karla',sans-serif; font-size:15px; margin-bottom:12px; box-sizing:border-box;}
   .gate-chips{display:flex; flex-wrap:wrap; gap:6px; justify-content:center; margin-bottom:16px;}
   .gate-chip{background:var(--bg); border:1px solid var(--line); border-radius:100px; padding:5px 12px; font-size:12.5px; cursor:pointer; color:var(--ink-soft);}
@@ -310,6 +313,7 @@
   .codigo-quien{display:flex; align-items:center; justify-content:center; gap:10px; font-weight:700; font-size:16px; margin:4px 0 12px;}
   .codigo-quien svg.av{height:44px; width:auto;}
   .codigo-input{text-align:center; font-size:22px !important; letter-spacing:0.3em; font-weight:700;}
+  .codigo-input::placeholder{letter-spacing:normal; font-size:15px;}
   .gate-error.suave{color:var(--ink-soft); font-size:12.5px;}
   .gate-personas{display:flex; flex-direction:column; gap:8px; text-align:left;}
   .gate-persona{display:flex; align-items:center; gap:12px; width:100%; background:#FBF9F3; border:1.5px solid var(--line); border-radius:14px; padding:10px 14px; font-family:'Karla',sans-serif; font-size:16px; font-weight:700; color:var(--ink); cursor:pointer;}
@@ -342,6 +346,12 @@
   .landing-marca{display:flex; align-items:center; justify-content:center; gap:12px; margin:6px 0 8px;}
   .landing-icono{width:84px; height:40px; flex:none; overflow:visible;}
   .landing-header p{color:var(--ink-soft); font-size:15px; margin:0;}
+  .entrar-home{background:var(--surface); border:1px solid var(--line); border-radius:16px; padding:14px 14px 10px; margin-bottom:10px; box-shadow:var(--shadow);}
+  .entrar-home b{font-family:'Fraunces',serif; font-size:17px; font-weight:600;}
+  .entrar-home p{font-size:13.5px; color:var(--ink-soft); margin:2px 0 10px; line-height:1.45;}
+  .entrar-home-fila{display:flex; gap:8px;}
+  .entrar-home-fila .gate-input{margin:0; flex:1; min-width:0;}
+  .entrar-home-fila .btn{flex:none;}
   .cats-intro{display:flex; gap:10px; margin-bottom:8px;}
   .cats-intro img{width:50%; height:160px; object-fit:cover; border-radius:18px; box-shadow:var(--shadow);}
   /* En escritorio la foto es más ancha y el recorte queda justo abajo: se corre un poco */
@@ -513,9 +523,15 @@
     <p>Todo lo que necesitás para cuidar a Milo y Zoe</p>
   </div>
 
+  <div class="entrar-home" id="entrarHome" style="display:none;">
+    <b>¿Te pasaron un código?</b>
+    <p>Entrá para ver tus turnos, el recorrido, el podio y el muro de los cuidadores.</p>
+    <div class="entrar-home-fila"><input class="gate-input codigo-input" id="homeCodigoInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Código de 6 números"><button class="btn" id="homeCodigoBtn">Entrar</button></div>
+    <div class="gate-error" id="homeCodigoError"></div>
+  </div>
   <div id="tuRecorrido" style="display:none;"></div>
   <div id="turnosHome"></div>
-  <div id="activosWrap">
+  <div id="activosWrap" style="display:none;">
     <h2 class="landing-section-title" style="--sec:var(--teal); margin-top:6px;">Recorridos activos</h2>
     <div class="recorridos-grid" id="recorridosActivos">Cargando...</div>
   </div>
@@ -524,10 +540,12 @@
   <div class="cats-intro"><img src="fotos/gatos-home.jpg" decoding="async" alt="Milo y Zoe en el sillón" style="width:100%;">
   </div>
 
+  <div id="podioWrap" style="display:none;">
   <h2 class="landing-section-title" style="--sec:var(--mustard)">Podio de cuidadores</h2>
   <div class="podio-card">
     <div id="podioMini"></div>
     <a href="leaderboard.html" class="ver-ranking-link">Ver ranking completo →</a>
+  </div>
   </div>
 
   <h2 class="landing-section-title" style="--sec:var(--aqua)">La guía</h2>
@@ -600,6 +618,7 @@
     <div class="recorridos-grid" id="recorridosPasados"></div>
   </div>
 
+  <div id="muroHomeWrap" style="display:none;">
   <h2 class="landing-section-title" style="--sec:var(--orange)">Muro de los cuidadores</h2>
   <div id="comentariosLandingWrap">
     <p class="comentarios-note">Comentarios y anécdotas de todos los que pasaron a cuidar a Milo y Zoe.</p>
@@ -609,6 +628,7 @@
     </div>
     <p class="login-hint" id="landingComentarioLogin">Para comentar, <button class="link-btn" data-login style="background:none;border:none;padding:0;font:inherit;text-decoration:underline;cursor:pointer;color:var(--ink);">entrá con Google</button>.</p>
     <div class="comentarios-feed" id="comentariosFeedLanding">Cargando...</div>
+  </div>
   </div>
 
   <div class="landing-footer"><a href="admin.html">🔒 Admin</a></div>
@@ -623,22 +643,17 @@
     </div>
     <h1 id="gateTitle">Cargando...</h1>
     <p id="gateSubtitle"></p>
-    <div class="gate-chips" id="gateChips"></div>
-    <div id="gateLoginStep" style="display:none;">
-      <button class="btn btn-google" id="gateLoginBtn"><svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar con Google</button>
-      <button class="link-codigo" id="gateCodigoBtn">¿No querés usar Google? <b>Entrá con tu código</b></button>
-    </div>
-    <div id="gateNameStep" style="display:none;">
-      <div class="gate-personas" id="gatePersonas"></div>
-    </div>
     <div id="gateCodigoStep" style="display:none;">
-      <div class="gate-personas" id="gateCodigoPersonas"></div>
-      <div id="gateCodigoForm" style="display:none;">
-        <div class="codigo-quien" id="gateCodigoQuien"></div>
-        <input class="gate-input codigo-input" id="gateCodigoInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Tu código de 6 números">
-        <button class="btn" id="gateCodigoEntrar" style="width:100%;">Entrar</button>
-      </div>
-      <button class="link-codigo" id="gateCodigoVolver">← Volver</button>
+      <input class="gate-input codigo-input" id="gateCodigoInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Tu código de 6 números">
+      <button class="btn" id="gateCodigoEntrar" style="width:100%;">Entrar</button>
+      <p class="gate-ayuda">Es el código que te pasaron por WhatsApp. Lo pedimos una sola vez en cada celular.</p>
+    </div>
+    <div id="gateAdminStep" style="display:none;">
+      <button class="btn" id="gateAdminBtn" style="width:100%; margin-bottom:10px;">🔧 Entrar como admin</button>
+    </div>
+    <div id="gateLoginStep" style="display:none;">
+      <p class="gate-o">¿Ya entraste antes con tu cuenta de Google?</p>
+      <button class="btn btn-google" id="gateLoginBtn"><svg viewBox="0 0 48 48"><path fill="#FFC107" d="M43.6 20.5H42V20H24v8h11.3C33.7 32.7 29.2 36 24 36c-6.6 0-12-5.4-12-12s5.4-12 12-12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 12.9 4 4 12.9 4 24s8.9 20 20 20 20-8.9 20-20c0-1.3-.1-2.4-.4-3.5z"/><path fill="#FF3D00" d="M6.3 14.7l6.6 4.8C14.7 15.1 19 12 24 12c3.1 0 5.8 1.2 7.9 3.1l5.7-5.7C34 6.1 29.3 4 24 4 16.3 4 9.7 8.3 6.3 14.7z"/><path fill="#4CAF50" d="M24 44c5.2 0 9.9-2 13.4-5.2l-6.2-5.2C29.2 35.1 26.7 36 24 36c-5.2 0-9.6-3.3-11.3-8l-6.5 5C9.5 39.6 16.2 44 24 44z"/><path fill="#1976D2" d="M43.6 20.5H42V20H24v8h11.3c-.8 2.2-2.2 4.2-4.1 5.6l6.2 5.2C37 39.2 44 34 44 24c0-1.3-.1-2.4-.4-3.5z"/></svg>Entrar con Google</button>
     </div>
     <div class="session-line" id="gateSession"></div>
     <div class="session-line"><button class="tema-btn" data-tema></button></div>
@@ -1152,206 +1167,103 @@ async function initGate(){
     initLanding();
     return;
   }
-  try{
-    // El recorrido y su lista de personas se piden a la vez (antes era uno después del otro)
-    participantesPrecarga = recorridoRef().collection("participantes").get().catch(() => null);
-    const snap = await recorridoRef().get();
-    if(!snap.exists){
-      mostrarGate("No encontrado", "Este recorrido ya no existe o el link está mal.");
-      return;
-    }
-    recorrido = snap.data();
-    TOTAL_DIAS = recorrido.dias || 3;
-  }catch(e){
-    console.error(e);
-    mostrarGate("Error", "No se pudo cargar el recorrido. Probá de nuevo en un rato.");
-    return;
-  }
-
-  let primeraSesion = true;
+  // Nada del recorrido (ni su nombre) se muestra hasta que este celular entra con su código
   auth.onAuthStateChanged(async user => {
     if(appIniciada && (!user || user.uid !== (usuario && usuario.uid))){ location.reload(); return; }
     usuario = user;
-    // La lista precargada sirve solo si ya había sesión al abrir; si alguien entra después, se pide
-    // de nuevo (mientras tanto otra persona pudo haber elegido su nombre)
-    if(!primeraSesion || !user) participantesPrecarga = null;
-    primeraSesion = false;
     if(ingresandoConCodigo) return;   // el ingreso con código sigue solo
-    gateError("");
-    document.getElementById("gateChips").innerHTML = "";
-    // Borrador: solo el admin lo puede abrir
-    if(recorrido.borrador && !esAdmin(user)){
-      mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido todavía no está publicado. Cuando esté listo, vas a poder entrar desde este mismo link.");
-      document.getElementById("gateLoginStep").style.display = "none";
-      document.getElementById("gateNameStep").style.display = "none";
-      document.getElementById("gateCodigoStep").style.display = "none";
-      document.getElementById("gateSession").innerHTML = user ? `<button id="gateLogout">Salir</button>` : "";
-      if(user) document.getElementById("gateLogout").addEventListener("click", () => auth.signOut());
-      return;
-    }
-    if(!user){
-      mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido es solo para quienes cuidan a Milo y Zoe. Entrá con Google o con tu código.");
-      document.getElementById("gateLoginStep").style.display = "block";
-      document.getElementById("gateNameStep").style.display = "none";
-      document.getElementById("gateCodigoStep").style.display = "none";
-      if(navegadorEmbebido()) gateError(AVISO_EMBEBIDO.replace(" El link ya quedó copiado.", ""));
-      document.getElementById("gateSession").innerHTML = "";
-      return;
-    }
-    document.getElementById("gateLoginStep").style.display = "none";
-    await resolverParticipante();
+    await resolverEntrada();
   });
 }
 
-let participantesPrecarga = null;
-async function resolverParticipante(){
+function pasoGate(paso){
+  document.getElementById("gateCodigoStep").style.display = paso.codigo ? "block" : "none";
+  document.getElementById("gateLoginStep").style.display = paso.google ? "block" : "none";
+  document.getElementById("gateAdminStep").style.display = paso.admin ? "block" : "none";
+  if(paso.codigo) setTimeout(() => document.getElementById("gateCodigoInput").focus(), 50);
+}
+function sesionGate(){
+  const el = document.getElementById("gateSession");
+  if(!usuario){ el.innerHTML = ""; return; }
+  el.innerHTML = `${esAnonimo(usuario) ? "Entraste con un código" : "Conectado como " + escapeHtml(usuario.email)} · <button id="gateLogout">Salir</button>`;
+  document.getElementById("gateLogout").addEventListener("click", () => auth.signOut());
+}
+
+async function resolverEntrada(){
+  gateError("");
+  sesionGate();
+  if(!usuario){
+    mostrarGate("Les Gates", "Para ver este recorrido, entrá con el código de 6 números que te pasaron.");
+    pasoGate({ codigo: true, google: true });
+    if(navegadorEmbebido()) document.getElementById("gateLoginStep").style.display = "none";
+    return;
+  }
+  mostrarGate("Les Gates", "Un momento…");
+  pasoGate({});
+  const pid = await membresia(recorridoId);
+  const admin = esAdmin(usuario);
+  if(!pid && !admin){
+    mostrarGate("Les Gates", esAnonimo(usuario)
+      ? "Este recorrido es de otro grupo. Si te pasaron un código para este, ponelo acá."
+      : "Tu cuenta de Google todavía no está vinculada a este recorrido. Poné tu código una vez y queda vinculada.");
+    pasoGate({ codigo: true });
+    return;
+  }
+  // Ya es parte (o es admin): ahora sí se carga el recorrido
   try{
-    const precarga = participantesPrecarga ? await participantesPrecarga : null;
-    participantesPrecarga = null;
-    const snap = precarga || await recorridoRef().collection("participantes").get();
+    const snap = await recorridoRef().get();
+    if(!snap.exists){ mostrarGate("No encontrado", "Este recorrido ya no existe o el link está mal."); return; }
+    recorrido = snap.data();
+    TOTAL_DIAS = recorrido.dias || 3;
+  }catch(e){
+    console.warn(e);
+    mostrarGate("Todavía no está listo", "Este recorrido todavía no está publicado. Cuando esté listo, vas a poder entrar desde este mismo link.");
+    return;
+  }
+  try{
+    const snap = await recorridoRef().collection("participantes").get();
     participantes = {};
     snap.forEach(doc => participantes[doc.id] = doc.data());
   }catch(e){
     console.error(e);
-    mostrarGate("Error", "No se pudo cargar la lista de cuidadores.");
+    mostrarGate("Error", "No se pudo cargar la lista de cuidadores. Probá de nuevo en un rato.");
     return;
   }
-  if(modoAdminPedido && esAdmin(usuario)){ entrarComoAdmin(); return; }
-  const mio = Object.keys(participantes).find(pid => participantes[pid].uid === usuario.uid);
-  if(mio){ entrar(mio); return; }
-
-  if(esAnonimo(usuario)){ mostrarPasoCodigo(); return; }   // sesión con código en otro recorrido: pide el código de este
-  mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "¿Quién sos? Tocá tu nombre. Tu cuenta de Google va a quedar vinculada a ese nombre en este recorrido.");
-  renderPersonasGate();
-  document.getElementById("gateNameStep").style.display = "block";
-  document.getElementById("gateSession").innerHTML = `Conectado como ${escapeHtml(usuario.email)} · <button id="gateLogout">Usar otra cuenta</button>`;
-  document.getElementById("gateLogout").addEventListener("click", () => auth.signOut());
-}
-
-// Un botón por persona cargada en el admin; las que ya vincularon su cuenta aparecen deshabilitadas
-function renderPersonasGate(){
-  const el = document.getElementById("gatePersonas");
-  const pids = Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b)));
-  el.innerHTML = "";
-  if(esAdmin(usuario)){
-    const adm = document.createElement("button");
-    adm.className = "gate-persona gate-admin";
-    adm.innerHTML = `<span class="gate-persona-av">🔧</span><span class="gate-persona-nombre">Entrar como admin<span class="gate-persona-tomado" style="display:block;">ver y editar todo</span></span>`;
-    adm.addEventListener("click", entrarComoAdmin);
-    el.appendChild(adm);
-  }
-  if(pids.length === 0){
-    gateError("Todavía no hay personas cargadas en este recorrido. Pedile a quien te invitó que te agregue.");
+  if(admin && (modoAdminPedido || !pid)){
+    if(modoAdminPedido){ entrarComoAdmin(); return; }
+    mostrarGate(recorrido.nombre || "Les Gates", "Sos admin: podés ver y editar todo.");
+    pasoGate({ admin: true });
     return;
   }
-  pids.forEach(pid => {
-    const tomado = !!participantes[pid].uid;
-    const btn = document.createElement("button");
-    btn.className = "gate-persona";
-    btn.disabled = tomado;
-    btn.innerHTML = `<span class="gate-persona-av">${avatarSVG(participantes[pid])}</span>
-      <span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>${tomado ? '<span class="gate-persona-tomado">ya entró</span>' : ""}`;
-    btn.addEventListener("click", () => {
-      if(confirm(`¿Sos ${nombreDe(pid)}? Tu cuenta de Google (${usuario.email}) va a quedar vinculada a ese nombre.`)) reclamar(pid);
-    });
-    el.appendChild(btn);
-  });
-  if(pids.every(pid => participantes[pid].uid)){
-    gateError("Todos los nombres de este recorrido ya están vinculados. Si sos parte y entraste con otra cuenta, pedile al admin que libere tu nombre." + (esAdmin(usuario) ? " Como admin, podés agregarte desde el panel." : ""));
-  } else {
-    gateError(esAdmin(usuario) ? "Si no estás en la lista, podés agregarte desde el panel de admin." : "¿No estás en la lista? Pedile a quien te invitó que te agregue.");
-    document.getElementById("gateError").classList.add("suave");
-  }
+  entrar(pid);
 }
 
-async function reclamar(pid){
-  try{
-    await vincularConGoogle(recorridoId, pid);
-    participantes[pid].uid = usuario.uid;
-    entrar(pid);
-  }catch(e){
-    console.error(e);
-    gateError("No se pudo vincular tu cuenta: puede que alguien haya elegido ese nombre recién. Recargá la página y probá de nuevo.");
-  }
-}
-
-document.getElementById("gateLoginBtn").addEventListener("click", loginGoogle);
-
-// ===== Entrar con código personal (sin Google): elegir el nombre y poner el código que dio el admin =====
+// ===== Entrar con código personal: el código dice quién sos y de qué recorrido =====
 let ingresandoConCodigo = false;
-let pidCodigo = null;
-
-async function mostrarPasoCodigo(){
-  gateError("");
-  document.getElementById("gateLoginStep").style.display = "none";
-  document.getElementById("gateNameStep").style.display = "none";
-  document.getElementById("gateCodigoStep").style.display = "block";
-  document.getElementById("gateCodigoForm").style.display = "none";
-  mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Tocá tu nombre y poné el código de 6 números que te pasó quien te invitó.");
-  if(!Object.keys(participantes).length){
-    try{
-      const snap = await recorridoRef().collection("participantes").get();
-      snap.forEach(doc => participantes[doc.id] = doc.data());
-    }catch(e){ console.error(e); gateError("No se pudo cargar la lista de cuidadores."); return; }
-  }
-  const el = document.getElementById("gateCodigoPersonas");
-  el.style.display = "";
-  el.innerHTML = "";
-  Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b))).forEach(pid => {
-    const btn = document.createElement("button");
-    btn.className = "gate-persona";
-    btn.innerHTML = `<span class="gate-persona-av">${avatarSVG(participantes[pid])}</span><span class="gate-persona-nombre">${escapeHtml(nombreDe(pid))}</span>`;
-    btn.addEventListener("click", () => elegirParaCodigo(pid));
-    el.appendChild(btn);
-  });
-  if(esAnonimo(usuario)){
-    document.getElementById("gateSession").innerHTML = `Entraste con un código · <button id="gateLogout">Salir</button>`;
-    document.getElementById("gateLogout").addEventListener("click", () => auth.signOut());
-  }
-}
-
-function elegirParaCodigo(pid){
-  pidCodigo = pid;
-  gateError("");
-  document.getElementById("gateCodigoPersonas").style.display = "none";
-  document.getElementById("gateCodigoForm").style.display = "block";
-  document.getElementById("gateCodigoQuien").innerHTML = `${avatarSVG(participantes[pid])}<span>${escapeHtml(nombreDe(pid))}</span>`;
-  const input = document.getElementById("gateCodigoInput");
-  input.value = "";
-  input.focus();
-}
-
-async function entrarConCodigo(){
-  const codigo = document.getElementById("gateCodigoInput").value.replace(/\D/g, "");
-  if(codigo.length !== 6){ gateError("El código tiene 6 números."); return; }
+async function entrarConCodigoGate(){
   const btn = document.getElementById("gateCodigoEntrar");
   btn.disabled = true;
   ingresandoConCodigo = true;
+  gateError("");
   try{
-    await vincularConCodigo(recorridoId, pidCodigo, codigo);
+    const { rid } = await entrarConCodigo(document.getElementById("gateCodigoInput").value);
     usuario = auth.currentUser;
-    participantes[pidCodigo].uid = usuario.uid;
     ingresandoConCodigo = false;
-    entrar(pidCodigo);
+    if(rid !== recorridoId){ location.href = `index.html?r=${encodeURIComponent(rid)}`; return; }
+    await resolverEntrada();
   }catch(e){
     console.warn(e);
     ingresandoConCodigo = false;
-    gateError(mensajeErrorCodigo(e, nombreDe(pidCodigo)));
+    gateError(mensajeErrorCodigo(e));
+    sesionGate();
   }
   btn.disabled = false;
 }
 
-document.getElementById("gateCodigoBtn").addEventListener("click", mostrarPasoCodigo);
-document.getElementById("gateCodigoEntrar").addEventListener("click", entrarConCodigo);
-document.getElementById("gateCodigoInput").addEventListener("keydown", e => { if(e.key === "Enter") entrarConCodigo(); });
-document.getElementById("gateCodigoVolver").addEventListener("click", () => {
-  if(document.getElementById("gateCodigoForm").style.display === "block"){ mostrarPasoCodigo(); return; }
-  document.getElementById("gateCodigoStep").style.display = "none";
-  gateError("");
-  if(esAnonimo(usuario)){ auth.signOut(); return; }
-  document.getElementById("gateLoginStep").style.display = "block";
-  mostrarGate(recorrido.nombre || "Cuidado de Milo y Zoe", "Este recorrido es solo para quienes cuidan a Milo y Zoe. Entrá con Google o con tu código.");
-});
+document.getElementById("gateLoginBtn").addEventListener("click", loginGoogle);
+document.getElementById("gateAdminBtn").addEventListener("click", entrarComoAdmin);
+document.getElementById("gateCodigoEntrar").addEventListener("click", entrarConCodigoGate);
+document.getElementById("gateCodigoInput").addEventListener("keydown", e => { if(e.key === "Enter") entrarConCodigoGate(); });
 function entrarComoAdmin(){
   modoAdmin = true;
   participanteId = null;
@@ -2129,16 +2041,46 @@ async function publicarComentario(){
 }
 
 // ===== LANDING (sin ?r=) =====
+// La home muestra a todos la guía; los recorridos, turnos, podio y muro solo a quienes entraron
+// con su código (o al admin)
+let turnoHome = 0;
 function initLanding(){
-  loadPodioMini();
-  loadRecorridosActivos();
   document.getElementById("landingComentarioBtn").addEventListener("click", publicarComentarioLanding);
-  auth.onAuthStateChanged(user => {
+  document.getElementById("homeCodigoBtn").addEventListener("click", entrarDesdeHome);
+  document.getElementById("homeCodigoInput").addEventListener("keydown", e => { if(e.key === "Enter") entrarDesdeHome(); });
+  auth.onAuthStateChanged(async user => {
+    const turno = ++turnoHome;
     usuario = user;
     renderLandingSession();
+    const miembro = !!user && (esAdmin(user) || await esMiembroGlobal());
+    if(turno !== turnoHome) return;
+    mostrarHomeDeMiembro(miembro);
+    if(!miembro) return;
+    loadPodioMini();
+    loadRecorridosActivos();
     loadComentariosLanding();
-    renderTuRecorrido();
   });
+}
+function mostrarHomeDeMiembro(miembro){
+  document.getElementById("entrarHome").style.display = miembro ? "none" : "block";
+  ["podioWrap", "muroHomeWrap"].forEach(id => document.getElementById(id).style.display = miembro ? "" : "none");
+  if(!miembro){
+    ["activosWrap", "pasadosWrap", "tuRecorrido"].forEach(id => document.getElementById(id).style.display = "none");
+    document.getElementById("turnosHome").innerHTML = "";
+    recorridosActivos = null;
+  }
+}
+async function entrarDesdeHome(){
+  const btn = document.getElementById("homeCodigoBtn"), err = document.getElementById("homeCodigoError");
+  btn.disabled = true; err.textContent = "";
+  try{
+    const { rid } = await entrarConCodigo(document.getElementById("homeCodigoInput").value);
+    location.href = `turnos.html?r=${encodeURIComponent(rid)}`;
+  }catch(e){
+    console.warn(e);
+    err.textContent = mensajeErrorCodigo(e);
+    btn.disabled = false;
+  }
 }
 
 // ===== Instalar como app (Android: prompt del sistema; iPhone: instrucciones) =====
@@ -2168,7 +2110,7 @@ function renderLandingSession(){
     el.innerHTML = `${escapeHtml(esAnonimo(usuario) ? (nombreSesion || "Con código") : (usuario.displayName || usuario.email))} · <button class="link-btn plain" id="landingLogout">Salir</button>`;
     document.getElementById("landingLogout").addEventListener("click", () => auth.signOut());
   } else {
-    el.innerHTML = `<button class="link-btn" data-login>Entrar con Google</button>`;
+    el.innerHTML = `<button class="link-btn plain" data-login>Entrar con Google</button>`;
   }
   document.querySelectorAll("[data-login]").forEach(b => b.onclick = loginGoogle);
   document.getElementById("landingComentarioForm").style.display = usuario ? "block" : "none";
@@ -2247,8 +2189,10 @@ async function renderTuRecorrido(){
   const mios = [];
   await Promise.all(recorridosActivos.map(async doc => {
     try{
-      const snap = await doc.ref.collection("participantes").where("uid", "==", uid).limit(1).get();
-      snap.forEach(p => mios.push({ doc, p: p.data() }));
+      const m = await doc.ref.collection("miembros").doc(uid).get();
+      if(!m.exists) return;
+      const p = await doc.ref.collection("participantes").doc(m.data().pid).get();
+      if(p.exists) mios.push({ doc, p: p.data() });
     }catch(e){ console.error(e); }
   }));
   if(turno !== turnoTuRecorrido || !usuario || usuario.uid !== uid) return;
@@ -2286,9 +2230,16 @@ async function renderTuRecorrido(){
 async function loadRecorridosActivos(){
   const el = document.getElementById("recorridosActivos");
   try{
-    const snap = await db.collection("recorridos").get();
+    // El admin ve todos; cada persona, solo los recorridos en los que está
+    let docs;
+    if(esAdmin(usuario)) docs = (await db.collection("recorridos").get()).docs;
+    else {
+      const mios = await misRecorridos();
+      docs = (await Promise.all(Object.keys(mios).map(rid => db.collection("recorridos").doc(rid).get().catch(() => null))))
+        .filter(d => d && d.exists);
+    }
     const activos = [], pasados = [];
-    snap.forEach(doc => {
+    docs.forEach(doc => {
       const r = doc.data();
       if(r.borrador) return;   // los borradores no se muestran hasta que el admin los publica
       const terminado = !!r.fechaInicio && diaDelRecorrido(r) > (r.dias || 3);
