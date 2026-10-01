@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="theme-color" content="#F2EEE1">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -159,6 +160,7 @@
   .campo{width:100%; font-family:inherit; font-size:15px; border:1.5px solid var(--line); border-radius:12px; padding:10px 12px; background:#fff; color:var(--ink);}
   textarea.campo{resize:none;}
   .codigo-input{letter-spacing:.3em; font-size:18px; text-align:center; margin-bottom:6px;}
+  .codigo-input::placeholder{letter-spacing:normal; font-size:15px;}
   .cont{text-align:right; font-size:11.5px; color:var(--ink-soft); margin:3px 0 14px;}
   .acciones{display:flex; gap:8px;}
   .acciones button{flex:1; border-radius:100px; padding:12px; font-size:15px; font-weight:700; border:none; background:var(--ink); color:#fff;}
@@ -171,6 +173,12 @@
   html.dark .aviso{color:#E38F74;}
   .o-google{display:flex; align-items:center; justify-content:center; gap:8px; width:100%; margin-top:12px; background:none; border:1.5px solid var(--line); border-radius:100px; padding:9px; font-size:13.5px; font-weight:700; color:var(--ink);}
   .o-google svg{width:16px; height:16px;}
+  .gate{background:var(--surface); border:1px solid var(--line); border-radius:18px; padding:22px 18px; margin-top:10px; text-align:center; box-shadow:var(--shadow);}
+  .gate h1{margin-bottom:10px;}
+  .gate p{font-size:14px; color:var(--ink-soft); line-height:1.5; margin:0 0 14px;}
+  .gate .codigo-input{margin-bottom:10px;}
+  .gate .gate-pie{font-size:13px; margin:18px 0 0;}
+  .gate .gate-pie button{background:none; border:none; padding:0; font-size:13px; color:var(--ink-soft); text-decoration:underline;}
   select.campo{margin-bottom:14px;}
   .toast{position:fixed; bottom:20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff; padding:10px 18px; border-radius:100px; font-size:13.5px; opacity:0; transition:opacity .3s ease; pointer-events:none; z-index:60; max-width:90vw; text-align:center;}
   .toast.show{opacity:1;}
@@ -210,7 +218,8 @@ function fechaDate(f){ const [y,m,d] = f.split("-").map(Number); return new Date
 function fechaCorta(f){ const d = fechaDate(f); return `${DS[d.getDay()]} ${d.getDate()} ${MESES[d.getMonth()]}`; }
 function fechaLarga(f){ const d = fechaDate(f); return `${DS_LARGO[d.getDay()]} ${d.getDate()}`; }
 function nombreDe(pid){ return (participantes[pid] && participantes[pid].nombre) || "Alguien"; }
-function yo(){ return usuario ? Object.keys(participantes).find(pid => participantes[pid].uid === usuario.uid) || null : null; }
+let miPid = null;   // quién soy en este recorrido (membresía de este celular)
+function yo(){ return miPid; }
 function soyAdmin(){ return esAdmin(usuario); }
 function abierto(){
   return recorrido.activo !== false && !recorrido.borrador && !(recorrido.fechaInicio && diaDelRecorrido(recorrido) > (recorrido.dias || 3) + 1);
@@ -230,23 +239,41 @@ function mensaje(titulo, texto){
 }
 
 // ===== Carga =====
+// Los turnos (fechas, nombres, comentarios) los ven solo las personas del recorrido: primero se entra
+// con el código; cada celular queda recordado
+let suscripto = false;
 async function init(){
   if(!recorridoId){ mensaje("Falta el recorrido", "Este link está incompleto. Pedile el link de turnos a quien te invitó."); return; }
-  try{
-    const snap = await recorridoRef().get();
-    if(!snap.exists){ mensaje("No encontrado", "Este recorrido ya no existe o el link está mal."); return; }
-    recorrido = snap.data();
-  }catch(e){
-    console.error(e);
-    mensaje("Error", "No se pudo cargar. Probá de nuevo en un rato.");
-    return;
+  auth.onAuthStateChanged(async user => {
+    if(entrandoConCodigo) return;
+    usuario = user;
+    await resolverEntrada();
+  });
+}
+
+async function resolverEntrada(){
+  miPid = usuario ? await membresia(recorridoId) : null;
+  if(!miPid && !soyAdmin()){ gateTurnos(); return; }
+  if(!recorrido){
+    try{
+      const snap = await recorridoRef().get();
+      if(!snap.exists){ mensaje("No encontrado", "Este recorrido ya no existe o el link está mal."); return; }
+      recorrido = snap.data();
+    }catch(e){
+      console.warn(e);
+      mensaje("Todavía no está listo", "Este recorrido todavía no está publicado. Cuando esté listo, vas a poder anotarte desde este mismo link.");
+      return;
+    }
   }
   document.title = `Turnos · ${recorrido.nombre || "Les Gates"}`;
+  cargado.auth = true;
+  if(suscripto){ render(); return; }
+  suscripto = true;
   recorridoRef().collection("participantes").onSnapshot(snap => {
     participantes = {};
     snap.forEach(d => participantes[d.id] = d.data());
     cargado.participantes = true; render();
-    if(hoja) renderHoja();   // ej.: un código incorrecto se ve un instante como vinculado y después se revierte
+    if(hoja) renderHoja();
   }, e => console.error(e));
   recorridoRef().collection("turnos").onSnapshot(snap => {
     turnos = {};
@@ -254,11 +281,48 @@ async function init(){
     cargado.turnos = true; render();
     if(hoja) renderHoja();
   }, e => console.error(e));
-  auth.onAuthStateChanged(user => {
-    usuario = user;
-    cargado.auth = true; render();
-    if(hoja) renderHoja();
-  });
+}
+
+// Pantalla de entrada: el código de 6 números (o Google, para quien ya lo había vinculado)
+let entrandoConCodigo = false;
+function gateTurnos(){
+  document.getElementById("app").innerHTML = `<div class="topbar"><a href="index.html" class="marca-mini" title="Les Gates: inicio">${CARAS}<span>Les Gates</span></a><span class="der">${botonTema()}</span></div>
+    <div class="gate">
+      <h1>¿Quién cuida a los gatos?</h1>
+      <p>${usuario && !esAnonimo(usuario)
+        ? "Tu cuenta de Google todavía no está vinculada a este recorrido. Poné tu código una vez y queda vinculada."
+        : "Para ver los turnos y anotarte, entrá con el código de 6 números que te pasaron por WhatsApp. Lo pedimos una sola vez en cada celular."}</p>
+      <input class="campo codigo-input" id="gCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Tu código de 6 números">
+      <div class="acciones"><button id="gEntrar">Entrar</button></div>
+      <div class="aviso" id="gError" style="display:none; margin-top:12px;"></div>
+      ${usuario ? `<p class="gate-pie">${esAnonimo(usuario) ? "Entraste con un código de otro recorrido" : "Conectado como " + escapeHtml(usuario.email || "")} · <button data-salir>Salir</button></p>`
+        : `<p class="gate-pie">¿Ya entraste antes con tu cuenta de Google?</p><button class="o-google" id="gGoogle">${GOOGLE_SVG} Entrar con Google</button>`}
+    </div>`;
+  const input = document.getElementById("gCodigo");
+  setTimeout(() => input.focus(), 50);
+  const entrar = async () => {
+    const btn = document.getElementById("gEntrar"), err = document.getElementById("gError");
+    btn.disabled = true; err.style.display = "none";
+    entrandoConCodigo = true;
+    try{
+      const { rid } = await entrarConCodigo(input.value);
+      usuario = auth.currentUser;
+      entrandoConCodigo = false;
+      if(rid !== recorridoId){ location.href = `turnos.html?r=${encodeURIComponent(rid)}`; return; }
+      await resolverEntrada();
+    }catch(e){
+      console.warn(e);
+      entrandoConCodigo = false;
+      usuario = auth.currentUser;
+      err.textContent = mensajeErrorCodigo(e); err.style.display = "block";
+      btn.disabled = false;
+    }
+  };
+  document.getElementById("gEntrar").addEventListener("click", entrar);
+  input.addEventListener("keydown", e => { if(e.key === "Enter") entrar(); });
+  const g = document.getElementById("gGoogle");
+  if(g) g.addEventListener("click", loginGoogle);
+  document.querySelectorAll("#app [data-salir]").forEach(b => b.addEventListener("click", () => auth.signOut()));
 }
 
 // ===== Página =====
@@ -382,14 +446,6 @@ function cerrarHoja(){
 }
 document.getElementById("velo").addEventListener("click", e => { if(e.target.id === "velo") cerrarHoja(); });
 
-// Hay que entrar (Google o código) si todavía no sos nadie en este recorrido; el admin no
-function necesitaEntrar(){ return !yo() && !soyAdmin(); }
-// Con Google y el nombre libre se vincula directo; si no, hace falta el código
-function necesitaCodigo(pid){
-  if(!pid || !necesitaEntrar()) return false;
-  return !usuario || esAnonimo(usuario) || !!participantes[pid].uid;
-}
-
 function personasHTML(sel){
   return `<div class="personas">${Object.keys(participantes).sort((a,b) => nombreDe(a).localeCompare(nombreDe(b))).map(pid =>
     `<button class="persona ${pid === sel ? "sel" : ""}" data-persona="${pid}"><span class="av-wrap">${avatarSVG(participantes[pid])}</span><span class="nom">${escapeHtml(nombreDe(pid))}</span></button>`).join("")}</div>`;
@@ -401,8 +457,6 @@ function renderHoja(){
   const { modo, fecha } = hoja;
   const comentarioEl = el.querySelector("#hComentario");
   if(comentarioEl) hoja.comentario = comentarioEl.value;
-  const codigoEl = el.querySelector("#hCodigo");
-  if(codigoEl) hoja.codigo = codigoEl.value;
   // Si alguien tomó el día mientras tenías la hoja abierta
   if(modo === "anotar" && turnos[fecha] && !hoja.guardando) hoja.aviso = "Alguien se anotó en este día recién. Elegí otro.", hoja.ocupado = true;
   if(modo === "editar" && !turnos[fecha] && !hoja.guardando){ cerrarHoja(); return; }
@@ -410,7 +464,7 @@ function renderHoja(){
   // Solo se redibuja si cambió algo que se ve en la hoja (así no se pierde lo que estás escribiendo
   // cuando otra persona se anota en otro día)
   const clave = JSON.stringify([modo, fecha, hoja.pid, hoja.aviso, hoja.ocupado, !!hoja.guardando, mio, soyAdmin(), usuario && usuario.uid,
-    hoja.pid && necesitaCodigo(hoja.pid), turnos[fecha] && turnos[fecha].pid, Object.keys(participantes).map(p => p + ":" + nombreDe(p)).join()]);
+    turnos[fecha] && turnos[fecha].pid, Object.keys(participantes).map(p => p + ":" + nombreDe(p)).join()]);
   if(clave === hoja.clave) return;
   hoja.clave = clave;
   let h = `<div class="asa"></div>`;
@@ -419,18 +473,8 @@ function renderHoja(){
     if(hoja.aviso) h += `<div class="aviso">${escapeHtml(hoja.aviso)}</div>`;
     if(soyAdmin()){
       h += `<span class="etq">¿Quién viene?</span>${personasHTML(hoja.pid)}<p class="ayuda">Como admin podés anotar a cualquiera.</p>`;
-    } else if(mio){
-      h += quienElegidoHTML(mio, false);
-    } else if(!hoja.pid){
-      h += `<span class="etq">¿Quién sos?</span>${personasHTML(null)}<p class="ayuda">¿No estás en la lista? Avisale a quien organiza el recorrido.</p>`;
     } else {
-      h += quienElegidoHTML(hoja.pid, true);
-      if(necesitaCodigo(hoja.pid)){
-        h += `<span class="etq">Tu código</span><input class="campo codigo-input" id="hCodigo" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="······" value="${escapeHtml(hoja.codigo || "")}">
-          <p class="ayuda">El de 6 números que te pasó quien organiza. Lo pedimos una sola vez en este celular.</p>`;
-      } else {
-        h += `<p class="ayuda">Tu cuenta de Google (${escapeHtml(usuario.email || "")}) va a quedar vinculada a ${escapeHtml(nombreDe(hoja.pid))}.</p>`;
-      }
+      h += quienElegidoHTML(mio);
     }
   } else {
     const t = turnos[fecha] || {};
@@ -438,69 +482,42 @@ function renderHoja(){
     if(hoja.aviso) h += `<div class="aviso">${escapeHtml(hoja.aviso)}</div>`;
     if(soyAdmin()) h += `<span class="etq">¿Quién viene?</span>${personasHTML(hoja.pid)}`;
   }
-  const mostrarForm = !(modo === "anotar" && !soyAdmin() && !mio && !hoja.pid);
-  if(mostrarForm){
+  {
     h += `<span class="etq">Comentario (opcional)</span>
-      <textarea class="campo" id="hComentario" rows="3" maxlength="400" placeholder="Horario, si tenés llave, algo que notaste de los gatos…">${escapeHtml(hoja.comentario || "")}</textarea>
+      <textarea class="campo" id="hComentario" rows="3" maxlength="400" placeholder="Horario, algo que notaste de los gatos…">${escapeHtml(hoja.comentario || "")}</textarea>
       <div class="cont" id="hCont">${(hoja.comentario || "").length}/400</div>
-      <div class="acciones"><button class="sec" data-h="cancelar">Cancelar</button><button data-h="guardar" ${hoja.ocupado || hoja.guardando ? "disabled" : ""}>${modo === "anotar" && necesitaCodigo(hoja.pid) ? "Entrar y anotarme" : "Guardar"}</button></div>`;
-    if(modo === "anotar" && necesitaCodigo(hoja.pid) && !usuario)
-      h += `<button class="o-google" data-h="google">${GOOGLE_SVG} o entrá con Google</button>`;
+      <p class="ayuda">🔒 Lo ven solo las personas de este recorrido. Igual, la llave y los códigos de la casa pasalos por WhatsApp.</p>
+      <div class="acciones"><button class="sec" data-h="cancelar">Cancelar</button><button data-h="guardar" ${hoja.ocupado || hoja.guardando ? "disabled" : ""}>Guardar</button></div>`;
     if(modo === "editar") h += `<button class="liberar" data-h="liberar">Liberar este día</button>`;
-  } else {
-    h += `<div class="acciones"><button class="sec" data-h="cancelar">Cancelar</button></div>`;
   }
   const activo = document.activeElement;
   const foco = activo && el.contains(activo) && activo.id ? { id: activo.id, pos: activo.selectionStart || 0 } : null;
   el.innerHTML = h;
   el.querySelectorAll("[data-persona]").forEach(b => b.addEventListener("click", () => { hoja.pid = b.dataset.persona; hoja.aviso = hoja.ocupado ? hoja.aviso : ""; renderHoja(); }));
-  el.querySelectorAll("[data-cambiar]").forEach(b => b.addEventListener("click", () => { hoja.pid = null; hoja.aviso = hoja.ocupado ? hoja.aviso : ""; renderHoja(); }));
   el.querySelectorAll("[data-salir]").forEach(b => b.addEventListener("click", () => { cerrarHoja(); auth.signOut(); }));
   const ta = el.querySelector("#hComentario");
   if(ta) ta.addEventListener("input", () => { hoja.comentario = ta.value; document.getElementById("hCont").textContent = ta.value.length + "/400"; });
-  const cod = el.querySelector("#hCodigo");
-  if(cod) cod.addEventListener("input", () => { hoja.codigo = cod.value; });
   if(foco && el.querySelector("#" + foco.id)){ const f = el.querySelector("#" + foco.id); f.focus(); try{ f.setSelectionRange(foco.pos, foco.pos); }catch(e){} }
   const b = sel => el.querySelector(`[data-h="${sel}"]`);
   b("cancelar").addEventListener("click", cerrarHoja);
   if(b("guardar")) b("guardar").addEventListener("click", guardarHoja);
-  if(b("google")) b("google").addEventListener("click", entrarConGoogleYSeguir);
   if(b("liberar")) b("liberar").addEventListener("click", liberar);
 }
 
-function quienElegidoHTML(pid, cambiable){
-  return `<div class="quien-elegido"><span class="av-wrap">${avatarSVG(participantes[pid])}</span><span class="nom">${cambiable ? "" : "Te anotás como "}${escapeHtml(nombreDe(pid))}</span>
-    ${cambiable ? `<button data-cambiar>Cambiar</button>` : `<button data-salir>No soy ${escapeHtml(nombreDe(pid))}</button>`}</div>`;
-}
-
-async function entrarConGoogleYSeguir(){
-  await loginGoogle();
-  if(hoja) renderHoja();   // con Google ya no hace falta el código (salvo que el nombre esté vinculado a otra cuenta)
+function quienElegidoHTML(pid){
+  return `<div class="quien-elegido"><span class="av-wrap">${avatarSVG(participantes[pid])}</span><span class="nom">Te anotás como ${escapeHtml(nombreDe(pid))}</span>
+    <button data-salir>No soy ${escapeHtml(nombreDe(pid))}</button></div>`;
 }
 
 async function guardarHoja(){
   const comentario = (document.getElementById("hComentario").value || "").trim().slice(0, 400);
   const { modo, fecha } = hoja;
-  const pid = soyAdmin() ? hoja.pid : (modo === "editar" ? turnos[fecha].pid : (yo() || hoja.pid));
-  if(!pid){ hoja.aviso = soyAdmin() ? "Elegí quién viene." : "Tocá tu nombre."; renderHoja(); return; }
+  const pid = soyAdmin() ? hoja.pid : (modo === "editar" ? turnos[fecha].pid : yo());
+  if(!pid){ hoja.aviso = "Elegí quién viene."; hoja.clave = null; renderHoja(); return; }
   const btn = document.querySelector('[data-h="guardar"]');
   btn.disabled = true;
   hoja.guardando = true;
   try{
-    // 1) Entrar, si hace falta
-    if(modo === "anotar" && necesitaEntrar()){
-      if(necesitaCodigo(pid)){
-        const codigo = (document.getElementById("hCodigo").value || "").replace(/\D/g, "");
-        if(codigo.length !== 6) throw { aviso: "El código tiene 6 números." };
-        try{ await vincularConCodigo(recorridoId, pid, codigo); }
-        catch(e){ console.warn(e); throw { aviso: mensajeErrorCodigo(e, nombreDe(pid)) }; }
-      } else {
-        try{ await vincularConGoogle(recorridoId, pid); }
-        catch(e){ console.warn(e); throw { aviso: `No se pudo vincular tu cuenta a ${nombreDe(pid)}: puede que alguien lo haya elegido recién. Probá con tu código.` }; }
-      }
-      usuario = auth.currentUser;
-      participantes[pid] = { ...participantes[pid], uid: usuario.uid };
-    }
     // 2) Guardar el turno
     const ref = recorridoRef().collection("turnos").doc(fecha);
     const datos = { fecha, pid, nombre: nombreDe(pid).slice(0, 40), comentario, uid: auth.currentUser.uid, actualizado: Date.now() };

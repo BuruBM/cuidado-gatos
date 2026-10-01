@@ -5,7 +5,7 @@ const REPO = path.resolve(__dirname, "..");
 const SHOTS = path.join(__dirname, "capturas");
 fs.rmSync(SHOTS, { recursive: true, force: true }); fs.mkdirSync(SHOTS, { recursive: true });
 const { initializeTestEnvironment } = require("@firebase/rules-unit-testing");
-const { doc, setDoc, getDocs, collection } = require("firebase/firestore");
+const { doc, setDoc, getDoc, getDocs, collection } = require("firebase/firestore");
 
 const tipos = { html:"text/html; charset=utf-8", js:"application/javascript", json:"application/json", png:"image/png", css:"text/css" };
 const server = http.createServer((req, res) => {
@@ -45,9 +45,21 @@ window.__login = (c) => auth.signInWithCredential(firebase.auth.GoogleAuthProvid
   return page;
 }
 const login = (page) => page.evaluate(c => window.__login(c), page.cuenta);
+// Entrar con el código de 6 números de esa persona (lo busca en la base, como si lo hubiera recibido por WhatsApp)
+async function codigoDe(rid, nombre){
+  let codigo = null;
+  await env.withSecurityRulesDisabled(async c => {
+    const f = c.firestore();
+    const p = (await getDocs(collection(f, `recorridos/${rid}/participantes`))).docs.find(d => d.data().nombre === nombre);
+    codigo = (await getDoc(doc(f, `recorridos/${rid}/codigos/${p.id}`))).data().codigo;
+  });
+  return codigo;
+}
+let RID = null;
 async function elegir(page, nombre){
-  await page.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
-  await page.locator("#gatePersonas .gate-persona", { hasText: nombre }).first().click();
+  await page.waitForSelector("#gateCodigoInput", { state: "visible", timeout: 10000 });
+  await page.fill("#gateCodigoInput", await codigoDe(RID, nombre));
+  await page.click("#gateCodigoEntrar");
   await page.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
 }
 const cerrarModales = (page) => page.evaluate(() => document.querySelectorAll(".modal-overlay.show").forEach(m => m.classList.remove("show")));
@@ -123,6 +135,7 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   check(adm.dialogos.some(m => m.includes('"Juan" y "Juana" se parecen')), "avisa que Juan y Juana se parecen");
   const link = await adm.getAttribute("#crearMsg a", "href");
   const rid = new URL(link).searchParams.get("r");
+  RID = rid;
   check(!!rid, "recorrido creado, link: " + link.replace(/^https?:\/\/[^/]+/, ""));
   await adm.waitForFunction(() => document.querySelectorAll(".persona-row").length === 5, null, { timeout: 10000 });
   check(true, "admin ve las 5 personas");
@@ -141,18 +154,18 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
 
   for(const p of [pam, lau, jua]){ await p.goto(urlDe(p)); await p.waitForSelector("#gateLoginBtn", { state:"visible" }); }
   check(await pam.isHidden("#appWrap"), "sin login no se ve el recorrido");
+  check((await pam.textContent("#gateTitle")) === "Les Gates" && !(await pam.textContent("#gateWrap")).includes("Prueba Octubre"), "antes de entrar no se ve ni el nombre del recorrido");
+  check(await pam.isVisible("#gateCodigoInput") && await pam.locator(".gate-persona").count() === 0, "la entrada pide el código y no muestra la lista de nombres");
   check(await pam.evaluate(() => !document.querySelector('svg.paw') && !!document.querySelector("#gateWrap .icono-caras")), "ingreso al recorrido con el ícono nuevo (caritas)");
   await pam.screenshot({ path: SHOTS + "/01-entrada.png" });
 
   // Pamela → "Pam"
   await login(pam);
-  await pam.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
-  const botones = await pam.$$eval("#gatePersonas .gate-persona-nombre", els => els.map(e => e.textContent.trim()));
-  check(botones.length === 4 && ["Juan","Lauti","Pam","Sofi"].every(n => botones.some(b => b.startsWith(n))), "'¿Quién sos?' muestra las 4 personas: " + botones.join(", "));
-  check(!(await pam.textContent("#gateSubtitle")).includes("Pamela"), "no asume quién sos por el nombre de Google");
-  await pam.screenshot({ path: SHOTS + "/01b-quien-sos.png" });
+  await pam.waitForFunction(() => document.getElementById("gateSubtitle").textContent.includes("todavía no está vinculada"), null, { timeout: 10000 });
+  check(await pam.isVisible("#gateCodigoInput") && await pam.locator(".gate-persona").count() === 0, "con Google pero sin código: pide el código una vez (no muestra nombres)");
+  await pam.screenshot({ path: SHOTS + "/01b-google-pide-codigo.png" });
   await elegir(pam, "Pam");
-  check(pam.dialogos.some(m => m.includes("¿Sos Pam?") && m.includes("pame@x.com")), "Pamela elige 'Pam' y confirma con su mail");
+  check((await leerParticipantes(rid)).pam.uid, "Pamela entra con su código y su Google queda vinculado a 'Pam'");
   await pam.waitForSelector("#avisoOverlay.show");
   check((await pam.textContent("#avisoTexto")).includes("Gracias por venir"), "Pam ve el mensaje de bienvenida");
   await pam.click("#avisoClose");
@@ -160,20 +173,21 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   // Lautaro → "Lauti"
   await login(lau);
   await elegir(lau, "Lauti");
-  check(lau.dialogos.some(m => m.includes("¿Sos Lauti?")), "Lautaro elige 'Lauti'");
+  check((await lau.textContent("#appSession")).includes("Lauti"), "Lautaro entra con el código de 'Lauti'");
   await lau.click("#avisoClose");
   const cara = await lau.getAttribute("#avatarFaceImg", "href");
   check(cara && cara.startsWith("data:image/png"), "Lauti usa la foto pixelada que cargó el admin");
 
-  // Juan: el nombre de Pam ya está tomado
+  // Juan: primero se equivoca de código
   await login(jua);
-  await jua.waitForSelector("#gatePersonas .gate-persona", { timeout: 10000 });
-  check(await jua.locator("#gatePersonas .gate-persona", { hasText: "Pam" }).isDisabled(), "Juan ve 'Pam' deshabilitado (ya entró)");
-  check(await jua.locator("#gatePersonas .gate-persona", { hasText: "Lauti" }).isDisabled(), "…y 'Lauti' también");
-  check((await jua.textContent("#gateError")).includes("¿No estás en la lista?"), "explica qué hacer si no está en la lista");
+  await jua.waitForSelector("#gateCodigoInput", { state: "visible", timeout: 10000 });
+  await jua.fill("#gateCodigoInput", "000000");
+  await jua.click("#gateCodigoEntrar");
+  await jua.waitForFunction(() => document.getElementById("gateError").textContent.includes("no existe"), null, { timeout: 10000 });
+  check(await jua.isHidden("#appWrap"), "Juan con un código que no existe: no entra y se le explica");
   await elegir(jua, "Juan");
   await jua.click("#avisoClose");
-  check(true, "Juan entra eligiendo su nombre");
+  check(true, "Juan entra con su código");
 
   // Día futuro bloqueado
   await tildar(pam, 2, "milo_seco_1");
@@ -266,35 +280,35 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   const pam2 = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });  // mismo Google
   await pam2.goto(urlDe()); await pam2.waitForSelector("#gateLoginBtn", { state:"visible" }); await login(pam2);
   await pam2.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check((await pam2.textContent("#appSession")).includes("Pam"), "Pam en un 2do dispositivo entra directo, sin volver a escribir el nombre");
+  check((await pam2.textContent("#appSession")).includes("Pam"), "Pam con el mismo Google en un 2do dispositivo entra directo, sin código");
   check((await pam2.inputValue("#notif-manana-hora")) === "08:30", "…y ve sus mismos horarios de recordatorio");
   await pam2.context().close();
 
   // Navegador interno de Instagram
   const insta = await pagina(null, { ua: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Mobile/15E148 Instagram 300.0" });
-  await insta.goto(urlDe()); await insta.waitForSelector("#gateLoginBtn", { state:"visible" });
-  check((await insta.textContent("#gateError")).includes("Google no deja"), "abierto desde Instagram: explica que hay que abrirlo en Chrome/Safari");
-  await insta.click("#gateLoginBtn");
-  await insta.waitForTimeout(500);
-  check(insta.dialogos.some(m => m.includes("Abrí el link en Chrome o Safari")), "…y el botón de Google da el mismo aviso");
+  await insta.goto(urlDe()); await insta.waitForSelector("#gateCodigoInput", { state:"visible" });
+  check(await insta.isHidden("#gateLoginStep") && await insta.isVisible("#gateCodigoInput"), "abierto desde Instagram: se entra con el código (Google no funciona ahí y no se ofrece)");
   await insta.context().close();
 
   // Home con sesión: "Tu recorrido" arriba y la lista de activos sin repetirlo
   const homeSin = await pagina(null);
   await homeSin.goto(BASE + "/index.html");
-  await homeSin.waitForSelector("#recorridosActivos .recorrido-btn", { timeout: 10000 });
-  const ordenHome = await homeSin.evaluate(() => { const t = [...document.querySelectorAll(".landing-inner > *")]; return t.indexOf(document.getElementById("activosWrap")) < t.indexOf(document.querySelector(".cats-intro")); });
-  check(ordenHome, "home sin sesión: 'Recorridos activos' aparece arriba, antes de la foto");
+  await homeSin.waitForSelector("#entrarHome", { state: "visible", timeout: 10000 });
+  await homeSin.waitForTimeout(800);
+  const homeTxt = await homeSin.textContent("#landingWrap");
+  check(!homeTxt.includes("Prueba Octubre") && !homeTxt.includes("Lauti") && await homeSin.isHidden("#podioWrap") && await homeSin.isHidden("#muroHomeWrap") && await homeSin.isHidden("#activosWrap"), "home sin código: no muestra recorridos, nombres, podio ni muro");
+  check(await homeSin.isVisible("#homeCodigoInput") && (await homeSin.textContent("#landingWrap")).includes("La guía"), "home sin código: pide el código y muestra la guía");
   check(await homeSin.evaluate(() => { const h = document.querySelector(".landing-marca"); return h.querySelector(".landing-icono") && Math.round(h.getBoundingClientRect().height) <= 50; }), "home: ícono nuevo a la izquierda del título, en una sola línea");
-  await homeSin.waitForSelector(".podio-mini-spot", { timeout: 10000 });
-  const altoPodio = await homeSin.evaluate(() => Math.round(document.querySelector(".podio-card").getBoundingClientRect().height));
-  check(altoPodio <= 150, "home: el podio ocupa poco alto (" + altoPodio + "px)");
+  check(await homeSin.evaluate(() => document.querySelector('meta[name="robots"]').content.includes("noindex")), "la web le pide a Google que no la muestre en las búsquedas");
   await homeSin.screenshot({ path: SHOTS + "/06-home-sin-sesion.png" });
   await homeSin.context().close();
   const homePam = await pagina({ sub:"uPam", email:"pame@x.com", email_verified:true, name:"Pamela Gómez" });
   await homePam.goto(BASE + "/index.html");
-  await homePam.waitForSelector("#recorridosActivos .recorrido-btn", { timeout: 10000 });
+  await homePam.waitForSelector("#entrarHome", { state: "visible", timeout: 10000 });
   await login(homePam);
+  await homePam.waitForSelector(".podio-mini-spot", { timeout: 10000 });
+  const altoPodio = await homePam.evaluate(() => Math.round(document.querySelector(".podio-card").getBoundingClientRect().height));
+  check(altoPodio <= 150, "home con sesión: se ve el podio y ocupa poco alto (" + altoPodio + "px)");
   await homePam.waitForSelector("#tuRecorrido .tu-recorrido", { timeout: 10000 });
   const tarjeta = await homePam.textContent("#tuRecorrido .tu-recorrido");
   check(tarjeta.includes("Prueba Octubre") && tarjeta.includes("Pam") && tarjeta.includes("Día 1 de 3") && tarjeta.includes("Ir →"), "home con sesión: tarjeta 'Tu recorrido · Pam — Prueba Octubre — Día 1 de 3 — Ir →'");
@@ -343,9 +357,11 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await filaJuan.locator('[data-p="liberar"]').click();
   await adm.waitForFunction(() => [...document.querySelectorAll(".persona-row")].find(r => r.textContent.includes("Juan")).textContent.includes("todavía no entró"), null, { timeout: 5000 });
   await jua.reload();
+  await jua.waitForSelector("#gateCodigoInput", { state: "visible", timeout: 10000 });
+  check(await jua.isHidden("#appWrap"), "liberado: a Juan se le cierra el acceso");
   await elegir(jua, "Juan");
   await esperarTarea(jua, 1, "zoe_humedo", "Vos");
-  check(true, "admin libera a Juan, Juan se vuelve a vincular y conserva sus tareas");
+  check(true, "admin libera a Juan, Juan vuelve a entrar con su código y conserva sus tareas");
 
   // ================= DÍA 2: solo va Sofi =================
   console.log("\n== Día 2: va solo Sofi ==");
@@ -358,13 +374,11 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   check(filaCodigo.includes(codigos.sofi) && filaCodigo.includes("Copiar mensaje") && filaCodigo.includes("WhatsApp"), "el admin ve el código de Sofi con 'Copiar mensaje' y 'WhatsApp'");
   const sof = await pagina(null);
   sof.nombre = "Sofi (código)";
-  await sof.goto(urlDe()); await sof.waitForSelector("#gateLoginBtn", { state:"visible" });
+  await sof.goto(urlDe()); await sof.waitForSelector("#gateCodigoInput", { state:"visible" });
   await sof.screenshot({ path: SHOTS + "/08-entrada-con-codigo.png" });
-  await sof.click("#gateCodigoBtn");
-  await sof.locator("#gateCodigoPersonas .gate-persona", { hasText: "Sofi" }).click();
   await sof.fill("#gateCodigoInput", codigos.sofi === "123456" ? "654321" : "123456");
   await sof.click("#gateCodigoEntrar");
-  await sof.waitForFunction(() => document.getElementById("gateError").textContent.includes("no es correcto"), null, { timeout: 10000 });
+  await sof.waitForFunction(() => document.getElementById("gateError").textContent.includes("no existe"), null, { timeout: 10000 });
   check(await sof.isHidden("#appWrap"), "con un código equivocado no entra");
   await sof.screenshot({ path: SHOTS + "/09-codigo-equivocado.png" });
   await sof.fill("#gateCodigoInput", codigos.sofi);
@@ -398,23 +412,17 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
 
   // Sofi entra desde otro celular con el mismo código
   const sof2 = await pagina(null);
-  await sof2.goto(urlDe()); await sof2.waitForSelector("#gateLoginBtn", { state:"visible" });
-  await sof2.click("#gateCodigoBtn");
-  await sof2.locator("#gateCodigoPersonas .gate-persona", { hasText: "Sofi" }).click();
+  await sof2.goto(urlDe()); await sof2.waitForSelector("#gateCodigoInput", { state:"visible" });
   await sof2.fill("#gateCodigoInput", codigos.sofi);
   await sof2.click("#gateCodigoEntrar");
   await sof2.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
   await esperarTarea(sof2, 2, "milo_seco_1", "Vos");
   check(true, "con el mismo código entra desde otro celular y ve sus tareas como propias");
   await sof2.context().close();
-  // En el primer celular la sesión quedó sin vínculo: al recargar pide el código de nuevo
+  // El primer celular sigue adentro: cada dispositivo que entró queda recordado
   await sof.reload();
-  await sof.waitForSelector("#gateCodigoStep", { state:"visible", timeout: 10000 });
-  await sof.locator("#gateCodigoPersonas .gate-persona", { hasText: "Sofi" }).click();
-  await sof.fill("#gateCodigoInput", codigos.sofi);
-  await sof.click("#gateCodigoEntrar");
   await sof.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
-  check(true, "vuelve a entrar en el primer celular con su código");
+  check((await sof.textContent("#appSession")).includes("Sofi"), "el primer celular de Sofi sigue adentro sin volver a poner el código");
 
   // ================= DÍA 4: terminó (día de gracia) =================
   console.log("\n== Día 4: el recorrido terminó ayer (nadie fue el día 3) ==");
@@ -464,9 +472,9 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   // Modo admin
   console.log("\n== Modo admin en el recorrido cerrado ==");
   await adm.goto(urlDe());
-  await adm.waitForSelector("#gatePersonas .gate-admin", { timeout: 10000 });
-  check(true, "el admin ve 'Entrar como admin' en la lista");
-  await adm.click("#gatePersonas .gate-admin");
+  await adm.waitForSelector("#gateAdminBtn", { state: "visible", timeout: 10000 });
+  check(true, "el admin ve 'Entrar como admin' sin necesitar código");
+  await adm.click("#gateAdminBtn");
   await adm.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
   check(await adm.isVisible("#modoAdminNota") && await adm.isHidden("#avatarMarker"), "modo admin: nota visible y sin muñequito propio");
   await irADia(adm, 3); await adm.click('#panel-3 .task[data-key="milo_seco_1"]');
@@ -506,8 +514,10 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
 
   // Home y ranking
   console.log("\n== Home y ranking ==");
-  const home = await pagina(null, { ancho: 360 });
+  const home = await pagina({ sub:"uJua", email:"juan@x.com", email_verified:true, name:"" }, { ancho: 360 });
   await home.goto(BASE + "/index.html");
+  await home.waitForSelector("#entrarHome", { state: "visible", timeout: 10000 });
+  await login(home);
   await home.waitForSelector("#recorridosPasados .recorrido-btn", { timeout: 10000 });
   check((await home.textContent("#recorridosPasados")).includes("Prueba Octubre"), "home: el recorrido figura en 'pasados'");
   check(await home.isHidden("#activosWrap"), "home: sin recorridos activos, la sección no aparece");
@@ -516,8 +526,13 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   check(!(await home.textContent("#comentariosFeedLanding")).includes("Milo comió todo"), "home: el comentario del recorrido no aparece en el muro global");
   await sinDesborde(home, "home");
   await home.screenshot({ path: SHOTS + "/05-home.png", fullPage: true });
-  const lb = await pagina(null, { ancho: 360 });
-  await lb.goto(BASE + "/leaderboard.html"); await lb.waitForSelector(".fila");
+  const lbSin = await pagina(null, { ancho: 360 });
+  await lbSin.goto(BASE + "/leaderboard.html");
+  await lbSin.waitForFunction(() => document.getElementById("lista").textContent.includes("Entrá con tu código"), null, { timeout: 10000 });
+  check(!(await lbSin.textContent("body")).includes("Lauti"), "ranking sin código: no muestra nombres");
+  await lbSin.context().close();
+  const lb = await pagina({ sub:"uJua", email:"juan@x.com", email_verified:true, name:"" }, { ancho: 360 });
+  await lb.goto(BASE + "/leaderboard.html"); await lb.waitForTimeout(500); await login(lb); await lb.waitForSelector(".fila", { timeout: 10000 });
   tareas = await leerTareas(rid);
   const txtLb = await lb.textContent("#lista");
   for(const pid of ["pam","lauti","juan","sofi"]){  // puntos después de los cambios del admin
@@ -532,8 +547,10 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
 
   // ================= MODO OSCURO =================
   console.log("\n== Modo oscuro ==");
-  const homeOsc = await pagina(null, { esquema: "dark" });
+  const homeOsc = await pagina({ sub:"uJua", email:"juan@x.com", email_verified:true, name:"" }, { esquema: "dark" });
   await homeOsc.goto(BASE + "/index.html");
+  await homeOsc.waitForSelector("#entrarHome", { state: "visible", timeout: 10000 });
+  await login(homeOsc);
   await homeOsc.waitForSelector("#recorridosPasados .recorrido-btn", { timeout: 10000 });
   check(await homeOsc.evaluate(() => document.documentElement.classList.contains("dark")), "con el celular en modo oscuro, la app arranca oscura (Auto)");
   check((await homeOsc.textContent(".landing-topbar [data-tema]")).includes("Auto"), "el botón dice '🌓 Auto'");
@@ -556,8 +573,8 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   await pamOsc.evaluate(() => showVictory(mensajeCierre(86)));
   await pamOsc.waitForTimeout(900);
   await pamOsc.screenshot({ path: SHOTS + "/13-oscuro-cierre.png" });
-  const lbOsc = await pagina(null, { esquema: "dark" });
-  await lbOsc.goto(BASE + "/leaderboard.html"); await lbOsc.waitForSelector(".fila");
+  const lbOsc = await pagina({ sub:"uJua", email:"juan@x.com", email_verified:true, name:"" }, { esquema: "dark" });
+  await lbOsc.goto(BASE + "/leaderboard.html"); await lbOsc.waitForTimeout(500); await login(lbOsc); await lbOsc.waitForSelector(".fila", { timeout: 10000 });
   await lbOsc.screenshot({ path: SHOTS + "/14-oscuro-ranking.png", fullPage: true });
   const admOsc = await pagina({ sub:"admin", email:"bm.blancom@gmail.com", email_verified:true, name:"Admin" }, { esquema: "dark" });
   await admOsc.goto(BASE + "/admin.html"); await admOsc.waitForSelector("#loginBtn"); await login(admOsc);

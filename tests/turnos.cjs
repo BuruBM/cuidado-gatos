@@ -53,7 +53,14 @@ async function leer(ruta){ let out = null; await env.withSecurityRulesDisabled(a
 async function leerCol(ruta){ const out = {}; await env.withSecurityRulesDisabled(async c => { (await getDocs(collection(c.firestore(), ruta))).forEach(d => out[d.id] = d.data()); }); return out; }
 async function abrirTurnos(page, rid = "oct"){
   await page.goto(`${BASE}/turnos.html?r=${rid}`);
-  await page.waitForSelector(".resumen, .mensaje h1", { timeout: 10000 });
+  await page.waitForSelector(".resumen, .mensaje h1, .gate h1", { timeout: 10000 });
+}
+// Pantalla de entrada de turnos: poner el código de 6 números
+async function entrarTurnos(page, codigo, esperarCalendario = true){
+  await page.waitForSelector("#gCodigo", { timeout: 10000 });
+  await page.fill("#gCodigo", codigo);
+  await page.click("#gEntrar");
+  if(esperarCalendario) await page.waitForSelector(".resumen", { timeout: 10000 });
 }
 async function anotarDesdeLista(page, fecha){
   await page.click(`.seg.vista [data-vista="lista"]`);
@@ -83,61 +90,65 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
     await setDoc(doc(f, "recorridos/oct"), { nombre:"Cuidado Octubre", dias:11, fechaInicio:iso(-1), activo:true, creado:2 });
     for(const [id, nombre] of [["pam","Pam"], ["sofi","Sofi"], ["juli","Juli"], ["caro","Caro"]])
       await setDoc(doc(f, `recorridos/oct/participantes/${id}`), { nombre, uid:null, recorridoNombre:"Cuidado Octubre" });
-    await setDoc(doc(f, "recorridos/oct/codigos/sofi"), { codigo:"123456" });
-    await setDoc(doc(f, "recorridos/oct/codigos/caro"), { codigo:"654321" });
+    for(const [pid, codigo] of [["sofi","123456"], ["caro","654321"], ["pam","222333"], ["juli","444555"]]){
+      await setDoc(doc(f, `recorridos/oct/codigos/${pid}`), { codigo });
+      await setDoc(doc(f, `accesos/${codigo}`), { rid:"oct", pid });
+    }
     await setDoc(doc(f, `recorridos/oct/turnos/${iso(-1)}`), { fecha:iso(-1), pid:"caro", nombre:"Caro", comentario:"Llegué 19 h", uid:null, actualizado:1 });
     await setDoc(doc(f, "recorridos/borr"), { nombre:"Viaje secreto", dias:3, fechaInicio:iso(20), activo:true, borrador:true, creado:3 });
     await setDoc(doc(f, "recorridos/borr/participantes/pam"), { nombre:"Pam", uid:null });
+    await setDoc(doc(f, "recorridos/borr/codigos/pam"), { codigo:"777888" });
+    await setDoc(doc(f, "accesos/777888"), { rid:"borr", pid:"pam" });
   });
   browser = await chromium.launch();
 
   // ===== 1) Sin cuenta: ve todo, sin entrar =====
   const sofi = await pagina(null, { nombre:"sofi", ancho:360 });
   await abrirTurnos(sofi);
-  check((await sofi.textContent(".resumen")).includes("1 de 11"), "sin cuenta: ve el contador (1 de 11 cubiertos)");
+  const gate = await sofi.textContent("#app");
+  check(!gate.includes("Cuidado Octubre") && !gate.includes("Caro") && !gate.includes("Llegué") && await sofi.locator(".celda, .fila, .persona").count() === 0, "sin código: no se ven fechas, nombres ni comentarios");
+  check(await sofi.isVisible("#gCodigo") && await sofi.isVisible("#gGoogle"), "sin código: pide el código (o Google para quien ya lo vinculó)");
+  await sofi.screenshot({ path: `${SHOTS}/00-entrada.png` });
+  await entrarTurnos(sofi, "111111", false);
+  await esperar(sofi, () => document.getElementById("gError").style.display !== "none");
+  check((await sofi.textContent("#gError")).includes("no existe"), "código que no existe: avisa y no entra");
+  await entrarTurnos(sofi, "123456");
+  check((await sofi.textContent(".pie")).includes("Sofi"), "con su código entra como Sofi");
+  check((await sofi.textContent(".resumen")).includes("1 de 11"), "ve el contador (1 de 11 cubiertos)");
   check(await sofi.locator(".celda.ok").count() === 1 && await sofi.locator(".celda.libre").count() === 10, "calendario: 1 día cubierto y 10 libres");
-  check(await sofi.locator(".seg [data-filtro]").count() === 0, "sin cuenta: no aparece el filtro Mis días");
+  check((await sofi.textContent('[data-filtro="mis"]')).includes("(0)"), "el filtro Mis días arranca en 0");
   check((await sofi.textContent(".detalle")).includes("Libre") && await sofi.locator(".detalle [data-anotar]").count() === 1, "calendario: hoy seleccionado, libre, con Anotarme");
   await sofi.click(`.celda[data-fecha="${iso(-1)}"]`);
   check((await sofi.textContent(".detalle")).includes("Caro") && (await sofi.textContent(".detalle")).includes("Llegué 19 h"), "tocar un día muestra quién va y su comentario");
-  check(await sofi.locator(".detalle [data-editar]").count() === 0, "sin cuenta: no puede editar el día de otro");
+  check(await sofi.locator(".detalle [data-editar]").count() === 0, "no puede editar el día de otra persona");
   await sinDesborde(sofi, "turnos a 360px");
   const altoArriba = await sofi.evaluate(() => document.querySelector(".cal").getBoundingClientRect().top);
   check(altoArriba < 520, `el calendario entra en la primera pantalla (${Math.round(altoArriba)}px)`);
   const bienvenida = await sofi.textContent(".bienvenida");
   check(bienvenida.includes("necesitan quién los cuide") && await sofi.locator(".bienvenida .guia-btn[href='index.html?r=oct']").count() === 1, "primer contacto: bienvenida con acceso a 📖 Guía y tareas");
-  await sofi.screenshot({ path: `${SHOTS}/01-calendario-sin-cuenta.png`, fullPage: true });
+  await sofi.screenshot({ path: `${SHOTS}/01-calendario.png`, fullPage: true });
   await sofi.click(`.celda[data-fecha="${iso(-1)}"]`);
 
   // Lista: el día que ya pasó no se puede tomar
   await sofi.click(`.seg.vista [data-vista="lista"]`);
   check(await sofi.locator(".fila").count() === 11, "lista: 11 filas");
   check(await sofi.locator(`[data-fila="${iso(-1)}"] [data-anotar]`).count() === 0, "lista: el día que ya pasó no tiene Anotarme");
-  await sofi.screenshot({ path: `${SHOTS}/02-lista-sin-cuenta.png`, fullPage: true });
+  await sofi.screenshot({ path: `${SHOTS}/02-lista.png`, fullPage: true });
   await sofi.reload(); await sofi.waitForSelector(".resumen");
   check(await sofi.locator(".fila").count() === 11, "la vista elegida (lista) se recuerda al volver");
 
-  // ===== 2) Anotarse con código =====
+  // ===== 2) Anotarse =====
   await sofi.click(`[data-fila="${iso(2)}"] [data-anotar]`);
   await sofi.waitForSelector("#velo.show");
-  check(await sofi.locator("#hoja .persona").count() === 4, "anotarse: primero elige su nombre de la lista (4 personas)");
-  await sofi.click(`#hoja [data-persona="sofi"]`);
-  check(await sofi.locator("#hCodigo").count() === 1, "anotarse sin cuenta: pide el código");
-  check(await sofi.locator('#hoja [data-h="google"]').count() === 1, "anotarse sin cuenta: ofrece Google como alternativa");
+  check(await sofi.locator("#hoja .persona").count() === 0 && (await sofi.textContent("#hoja .quien-elegido")).includes("Te anotás como Sofi"), "anotarse: ya sabe quién es (no muestra la lista de nombres)");
+  check((await sofi.textContent("#hoja")).includes("Lo ven solo las personas de este recorrido"), "anotarse: aclara quién ve el comentario y que la llave va por WhatsApp");
   await sofi.fill("#hComentario", "Voy a la tarde <b>18 h</b>");
-  await sofi.fill("#hCodigo", "111111");
-  await sofi.click('[data-h="guardar"]');
-  await esperar(sofi, () => (document.querySelector("#hoja .aviso") || {}).textContent);
-  check((await avisoHoja(sofi)).includes("no es correcto"), "código incorrecto: avisa y no anota");
-  check(!(await leer(`recorridos/oct/turnos/${iso(2)}`)), "código incorrecto: el día sigue libre");
-  check((await sofi.inputValue("#hComentario")).includes("18 h"), "código incorrecto: no se pierde el comentario escrito");
-  await sofi.fill("#hCodigo", "123456");
   await sofi.click('[data-h="guardar"]');
   await hojaCerrada(sofi);
   await esperar(sofi, f => document.querySelector(`[data-fila="${f}"].ok`), iso(2));
   const t1 = await leer(`recorridos/oct/turnos/${iso(2)}`);
   check(t1 && t1.pid === "sofi" && t1.comentario === "Voy a la tarde <b>18 h</b>", "código correcto: queda anotada con su comentario");
-  check((await leer("recorridos/oct/participantes/sofi")).uid === t1.uid, "código correcto: su nombre queda vinculado a este celular");
+  check((await leer("recorridos/oct/participantes/sofi")).uid === t1.uid && !!(await leer(`recorridos/oct/miembros/${t1.uid}`)), "su celular queda recordado como miembro del recorrido");
   check(await sofi.locator(`[data-fila="${iso(2)}"] .c b`).count() === 0 && (await sofi.textContent(`[data-fila="${iso(2)}"] .c`)).includes("<b>"), "el comentario se muestra como texto (sin inyectar HTML)");
   check(await sofi.locator(`[data-fila="${iso(2)}"].mio`).count() === 1, "su día aparece marcado como suyo (VOS)");
 
@@ -178,9 +189,11 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   const pam = await pagina(PAM);
   await abrirTurnos(pam);
   await loginEn(pam);
+  await esperar(pam, () => document.querySelector(".gate") && document.querySelector(".gate").textContent.includes("todavía no está vinculada"));
+  check(true, "con Google sin vincular: pide el código una vez");
+  await entrarTurnos(pam, "222333");
+  check((await pam.textContent(".pie")).includes("Pam"), "Pam pone su código y su Google queda vinculado");
   await anotarDesdeLista(pam, iso(4));
-  await pam.click(`#hoja [data-persona="pam"]`);
-  check(await pam.locator("#hCodigo").count() === 0 && (await pam.textContent("#hoja")).includes("pame@x.com"), "con Google y el nombre libre: no pide código, vincula la cuenta");
   await sofi.click(`.seg.vista [data-vista="lista"]`);
   await sofi.click(`[data-fila="${iso(4)}"] [data-anotar]`);
   await sofi.waitForSelector("#velo.show");
@@ -210,16 +223,21 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   const juli = await pagina(JULI);
   await abrirTurnos(juli);
   await loginEn(juli);
+  await entrarTurnos(juli, "444555");
   await anotarDesdeLista(juli, iso(7));
-  await juli.click(`#hoja [data-persona="sofi"]`);
-  check(await juli.locator("#hCodigo").count() === 1, "con Google, un nombre ya vinculado pide el código");
-  await juli.click("#hoja [data-cambiar]");
-  await juli.click(`#hoja [data-persona="juli"]`);
   await juli.click('[data-h="guardar"]');
   await hojaCerrada(juli);
   const tJuli = (await leer(`recorridos/oct/turnos/${iso(7)}`)) || {};
   const juliUid = await juli.evaluate(() => auth.currentUser.uid);
-  check(tJuli.pid === "juli" && tJuli.uid === juliUid && (await leer("recorridos/oct/participantes/juli")).uid === juliUid, "Juli entra con Google desde turnos y queda anotada");
+  check(tJuli.pid === "juli" && tJuli.uid === juliUid && (await leer("recorridos/oct/participantes/juli")).uid === juliUid, "Juli entra con Google + código desde turnos y queda anotada");
+  // Sofi en un segundo celular: con su código entra y ve sus días; el primero sigue adentro
+  const sofiB = await pagina(null, { nombre:"sofi-2" });
+  await abrirTurnos(sofiB);
+  await entrarTurnos(sofiB, "123456");
+  check((await sofiB.textContent(".pie")).includes("Sofi") && (await sofiB.textContent('[data-filtro="mis"]')).includes("(1)"), "Sofi entra desde otro celular con el mismo código y ve sus días");
+  await sofi.reload(); await sofi.waitForSelector(".resumen", { timeout: 10000 });
+  check((await sofi.textContent(".pie")).includes("Sofi"), "el primer celular de Sofi sigue adentro");
+  await sofiB.context().close();
 
   // Entrar a turnos sirve para el recorrido (una sola entrada)
   await juli.click(".guia-btn");
@@ -327,21 +345,24 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   await admin.screenshot({ path: `${SHOTS}/07-admin.png`, fullPage: true });
 
   // ===== 6) El borrador no se ve =====
+  // Home de alguien que entró (Juli): ve su recorrido y su línea de turnos; no los borradores
+  await juli.goto(`${BASE}/index.html`);
+  await esperar(juli, () => document.querySelector(".turnos-home"));
+  await juli.waitForTimeout(500);
+  const home = await juli.textContent("#landingWrap");
+  check(home.includes("Cuidado Octubre") && !home.includes("Viaje secreto") && !home.includes("Finde largo"), "home: se ve su recorrido y no los borradores");
+  check((await juli.textContent(".turnos-home")).includes("5 de 11 cubiertos"), "home: línea de turnos con los días cubiertos");
+  check(await juli.locator(".turnos-home").count() === 1, "home: una sola línea de turnos (el borrador no suma)");
+  await juli.screenshot({ path: `${SHOTS}/08-home.png` });
+  // Alguien con código de un borrador
   const otra = await pagina(null, { nombre:"otra" });
-  await otra.goto(`${BASE}/index.html`);
-  await otra.waitForSelector("#recorridosActivos .recorrido-btn", { timeout: 10000 });
-  await otra.waitForTimeout(800);
-  const home = await otra.textContent("#landingWrap");
-  check(home.includes("Cuidado Octubre") && !home.includes("Viaje secreto") && !home.includes("Finde largo"), "home: los borradores no aparecen");
-  await esperar(otra, () => document.querySelector(".turnos-home"));
-  check((await otra.textContent(".turnos-home")).includes("5 de 11 cubiertos"), "home: línea de turnos con los días cubiertos");
-  check(await otra.locator(".turnos-home").count() === 1, "home: una sola línea de turnos (el borrador no suma)");
-  await otra.screenshot({ path: `${SHOTS}/08-home.png` });
   await abrirTurnos(otra, "borr");
-  check((await otra.textContent(".mensaje")).includes("todavía no está publicado"), "turnos de un borrador: 'todavía no está publicado'");
+  await entrarTurnos(otra, "777888", false);
+  await esperar(otra, () => document.querySelector(".mensaje") && document.querySelector(".mensaje").textContent.includes("todavía no está publicado"));
+  check(true, "turnos de un borrador, aun con código: 'todavía no está publicado'");
   await otra.goto(`${BASE}/index.html?r=borr`);
   await esperar(otra, () => document.getElementById("gateSubtitle").textContent.includes("publicado"));
-  check(await otra.locator("#gateLoginStep:visible").count() === 0, "recorrido borrador: no ofrece entrar");
+  check(await otra.isHidden("#appWrap"), "recorrido borrador: no deja entrar");
   await admin.goto(`${BASE}/turnos.html?r=borr`);
   await admin.waitForSelector(".resumen", { timeout: 10000 });
   check(true, "admin sí ve los turnos del borrador");
@@ -361,13 +382,13 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   await itemOct.locator(".e-bienvenida").fill("¡Hola! Nos vamos de viaje 🧳\nAnotate en los días que puedas <3");
   await itemOct.locator('[data-accion="guardar"]').click();
   await esperar(admin, () => document.getElementById("toast").textContent.includes("guardados"));
-  await abrirTurnos(otra);
-  const bienv = await otra.textContent(".bienvenida p");
+  await abrirTurnos(juli);
+  const bienv = await juli.textContent(".bienvenida p");
   check(bienv.includes("Nos vamos de viaje") && bienv.includes("<3") && !bienv.includes("necesitan quién"), "la bienvenida de turnos se edita desde el admin (y se muestra como texto)");
-  check(await otra.evaluate(() => document.querySelector(".bienvenida p").innerText.split("\n").length) === 2, "la bienvenida respeta los saltos de línea");
+  check(await juli.evaluate(() => document.querySelector(".bienvenida p").innerText.split("\n").length) === 2, "la bienvenida respeta los saltos de línea");
 
   // % de victoria con turnos: un día vacío con alguien anotado le resta solo a esa persona
-  const pct = await otra.evaluate(() => {
+  const pct = await juli.evaluate(() => {
     const r = { dias: 3, fechaInicio: "2020-03-01" };
     const tareas = {};
     ["milo_seco_1","milo_seco_2","zoe_seco_1","zoe_seco_2","piedras"].forEach(k => tareas["1_" + k] = { dia: 1, key: k, pid: "ana" });
@@ -385,9 +406,36 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
   check(pct.betoCon === 0, `% con turnos: a Beto, anotado y sin tildar nada, le resta su día (0%) → ${pct.betoCon}`);
   check(pct.futuro === null, "% con turnos: si su día todavía no llegó, no muestra %");
 
+  // ===== 8) Quienes entraron antes de este cambio no tienen que volver a poner el código =====
+  const lau = await pagina({ sub:"uLau", email:"lau@x.com", email_verified:true, name:"Lau" });
+  await lau.goto(`${BASE}/index.html`);
+  await lau.waitForSelector("#entrarHome", { state: "visible", timeout: 10000 });
+  await loginEn(lau);
+  const lauUid = await lau.evaluate(() => auth.currentUser.uid);
+  await env.withSecurityRulesDisabled(async c => {
+    const f = c.firestore();
+    await setDoc(doc(f, "recorridos/viejo"), { nombre:"Recorrido viejo", dias:3, fechaInicio:iso(-1), activo:true, creado:1 });
+    await setDoc(doc(f, "recorridos/viejo/participantes/lau"), { nombre:"Lau", uid: lauUid });          // vinculada con Google antes
+    await setDoc(doc(f, "recorridos/viejo/participantes/otro"), { nombre:"Otro", uid: "uidOtroViejo" });  // vinculado con código antes
+    await setDoc(doc(f, "recorridos/viejo/codigos/lau"), { codigo:"909090" });                           // código sin acceso
+  });
+  await lau.goto(`${BASE}/index.html?r=viejo`);
+  await lau.waitForSelector("#appWrap", { state:"visible", timeout: 10000 });
+  check((await lau.textContent("#appSession")).includes("Lau"), "quien ya estaba vinculada entra directo, sin código");
+  check(!!(await leer(`recorridos/viejo/miembros/${lauUid}`)), "…y queda como miembro sola");
+  await admin.goto(`${BASE}/admin.html`);
+  await admin.waitForSelector(".recorrido-item", { timeout: 10000 });
+  await esperar(admin, async () => true);
+  for(let i = 0; i < 20 && !(await leer("accesos/909090")); i++) await admin.waitForTimeout(300);
+  check(((await leer("accesos/909090")) || {}).pid === "lau", "al abrir el panel, los códigos viejos quedan habilitados para entrar");
+  check(((await leer("recorridos/viejo/miembros/uidOtroViejo")) || {}).pid === "otro", "al abrir el panel, quien había entrado antes queda como miembro");
+  await lau.context().close();
+
   // ===== 7) Modo oscuro =====
   const oscuro = await pagina(null, { nombre:"oscuro", esquema:"dark", ancho:375 });
   await abrirTurnos(oscuro);
+  await oscuro.screenshot({ path: `${SHOTS}/09a-oscuro-entrada.png` });
+  await entrarTurnos(oscuro, "654321");
   const fondos = await oscuro.evaluate(() => {
     const ok = document.querySelector(".celda.ok"), libre = document.querySelector(".celda.libre");
     return [getComputedStyle(ok).backgroundColor, getComputedStyle(libre).backgroundColor, getComputedStyle(document.body).backgroundColor];

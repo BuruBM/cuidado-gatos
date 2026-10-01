@@ -255,29 +255,97 @@ function avatarSVG(p, texto){
   return `<svg class="av" viewBox="-11 -21.5 22 36.5" shape-rendering="crispEdges" aria-label="${escapeHtml(p.nombre || "")}">${cuerpoAvatarSVG(combo)}${cabeza}</svg>`;
 }
 
-// ===== Entrar a un recorrido (lo usan el recorrido y la página de turnos) =====
-// Con Google: se vincula la cuenta a un nombre libre de la lista.
-async function vincularConGoogle(recorridoId, pid){
-  await db.collection("recorridos").doc(recorridoId).collection("participantes").doc(pid)
-    .update({ uid: auth.currentUser.uid, reclamado: Date.now() });
-}
-// Con código: sesión anónima + en el mismo lote el intento (ingresos/{uid}) y el vínculo; las reglas
-// solo lo aceptan si el código coincide con el del participante.
-async function vincularConCodigo(recorridoId, pid, codigo){
-  if(!auth.currentUser) await auth.signInAnonymously();
+// ===== Entrar a un recorrido (lo usan la home, el recorrido y la página de turnos) =====
+// Todo lo de un recorrido (nombres, fotos, tareas, turnos, comentarios) lo ven solo sus personas.
+// Se entra con el código personal de 6 números: dice quién sos y de qué recorrido (accesos/{codigo}).
+// Cada celular que entra queda como miembro (recorridos/{rid}/miembros/{uid}) y no lo vuelve a pedir.
+
+// pid de quien está en este celular dentro del recorrido, o null si todavía no entró.
+// Quien había entrado antes de este sistema (su uid ya está en el participante) se pasa solo.
+async function membresia(recorridoId){
+  const user = auth.currentUser;
+  if(!user) return null;
   const ref = db.collection("recorridos").doc(recorridoId);
+  try{
+    const m = await ref.collection("miembros").doc(user.uid).get();
+    if(m.exists) return m.data().pid;
+  }catch(e){ console.warn(e); }
+  try{
+    const viejo = await ref.collection("participantes").where("uid", "==", user.uid).limit(1).get();
+    if(viejo.empty) return null;
+    const pid = viejo.docs[0].id;
+    await guardarMembresia(recorridoId, pid).catch(e => console.warn(e));
+    return pid;
+  }catch(e){ console.warn(e); return null; }
+}
+function guardarMembresia(recorridoId, pid){
   const uid = auth.currentUser.uid;
+  const lote = db.batch();
+  lote.set(db.collection("recorridos").doc(recorridoId).collection("miembros").doc(uid), { pid, uid, desde: Date.now() });
+  lote.set(db.collection("miembros").doc(uid), { rid: recorridoId });
+  return lote.commit();
+}
+
+// ¿Este celular es parte de Les Gates (entró a algún recorrido)? Sirve para la home y el podio.
+// Quien había entrado antes de este sistema (con Google o con código) se pasa solo.
+async function esMiembroGlobal(){
+  const user = auth.currentUser;
+  if(!user) return false;
+  try{ if((await db.collection("miembros").doc(user.uid).get()).exists) return true; }
+  catch(e){ console.warn(e); }
+  try{
+    const viejos = await db.collectionGroup("participantes").where("uid", "==", user.uid).get();
+    if(viejos.empty) return false;
+    for(const d of viejos.docs) await guardarMembresia(d.ref.parent.parent.id, d.id).catch(e => console.warn(e));
+    return true;
+  }catch(e){ console.warn(e); return false; }
+}
+
+// Los recorridos en los que está este celular: { rid: pid }. Pasa al sistema nuevo a quien
+// había entrado antes (su uid está en el participante pero no tiene membresía).
+async function misRecorridos(){
+  const user = auth.currentUser;
+  const out = {};
+  if(!user) return out;
+  const [ms, viejos] = await Promise.all([
+    db.collectionGroup("miembros").where("uid", "==", user.uid).get().catch(e => { console.warn(e); return null; }),
+    db.collectionGroup("participantes").where("uid", "==", user.uid).get().catch(e => { console.warn(e); return null; })
+  ]);
+  if(ms) ms.forEach(d => { if(d.ref.parent.parent) out[d.ref.parent.parent.id] = d.data().pid; });
+  if(viejos) for(const d of viejos.docs){
+    const rid = d.ref.parent.parent.id;
+    if(out[rid]) continue;
+    out[rid] = d.id;
+    await guardarMembresia(rid, d.id).catch(e => console.warn(e));
+  }
+  return out;
+}
+
+// Entrar con el código: sesión anónima si no había (o la de Google, que queda vinculada) + en un
+// mismo lote el intento, el vínculo con el nombre y la membresía. Devuelve { rid, pid }.
+async function entrarConCodigo(codigo){
+  codigo = String(codigo || "").replace(/\D/g, "");
+  if(codigo.length !== 6) throw { code: "codigo-largo" };
+  if(!auth.currentUser) await auth.signInAnonymously();
+  const acceso = await db.collection("accesos").doc(codigo).get();
+  if(!acceso.exists) throw { code: "codigo-invalido" };
+  const { rid, pid } = acceso.data();
+  const uid = auth.currentUser.uid;
+  const ref = db.collection("recorridos").doc(rid);
   const lote = db.batch();
   lote.set(ref.collection("ingresos").doc(uid), { pid, codigo });
   lote.update(ref.collection("participantes").doc(pid), { uid, reclamado: Date.now() });
+  lote.set(ref.collection("miembros").doc(uid), { pid, uid, desde: Date.now() });
+  lote.set(db.collection("miembros").doc(uid), { rid });
   await lote.commit();
-  return uid;
+  return { rid, pid };
 }
-function mensajeErrorCodigo(e, nombre){
+function mensajeErrorCodigo(e){
+  if(e.code === "codigo-largo") return "El código tiene 6 números.";
   if(e.code === "auth/operation-not-allowed" || e.code === "auth/admin-restricted-operation")
     return "El ingreso con código todavía no está activado. Avisale a quien te invitó (Firebase → Authentication → Anónimo).";
-  if(e.code === "permission-denied")
-    return "Ese código no es correcto para " + nombre + ". Revisalo o pedile uno nuevo a quien te invitó.";
+  if(e.code === "codigo-invalido" || e.code === "permission-denied")
+    return "Ese código no existe o ya no sirve. Revisalo o pedile uno nuevo a quien te invitó.";
   return "No se pudo entrar. Revisá la conexión y probá de nuevo.";
 }
 

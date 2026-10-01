@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="theme-color" content="#F2EEE1">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -368,7 +369,60 @@ async function crearParticipante(recorridoId, recorridoNombre, nombre, avatar){
   let id = base, n = 2;
   while((await col.doc(id).get()).exists) id = base + "-" + (n++);
   await col.doc(id).set({ nombre, avatar: avatar || "", recorridoNombre, uid: null, migrado: true, creado: Date.now() });
-  await ref.collection("codigos").doc(id).set({ codigo: generarCodigo() });
+  await asignarCodigo(recorridoId, id);
+}
+
+// Código nuevo para una persona: único en todo Les Gates (accesos/{codigo} dice de quién es y de qué
+// recorrido; así se puede entrar solo con el código). El código viejo deja de servir.
+async function asignarCodigo(recorridoId, pid, viejo){
+  let codigo;
+  for(let i = 0; i < 20; i++){
+    codigo = generarCodigo();
+    if(!(await db.collection("accesos").doc(codigo).get()).exists) break;
+  }
+  const lote = db.batch();
+  lote.set(db.collection("recorridos").doc(recorridoId).collection("codigos").doc(pid), { codigo });
+  lote.set(db.collection("accesos").doc(codigo), { rid: recorridoId, pid });
+  if(viejo) lote.delete(db.collection("accesos").doc(viejo));
+  await lote.commit();
+  return codigo;
+}
+
+// Saca a una persona de todos los celulares con los que entró al recorrido
+async function borrarMembresias(recorridoId, pid){
+  const snap = await db.collection("recorridos").doc(recorridoId).collection("miembros").where("pid", "==", pid).get();
+  await Promise.all(snap.docs.map(d => d.ref.delete()));
+}
+
+// Al abrir el panel: completa lo que falte para el ingreso por código (una vez por sesión).
+// - cada código tiene su acceso (los generados antes de este sistema no lo tenían)
+// - quien ya había entrado (uid en su nombre) queda como miembro, así no se le pide el código de nuevo
+let migracionHecha = false;
+async function completarAccesos(docs){
+  if(migracionHecha) return;
+  migracionHecha = true;
+  try{
+    const accesos = new Set((await db.collection("accesos").get()).docs.map(d => d.id));
+    for(const doc of docs){
+      const ref = doc.ref;
+      const [codigos, parts, miembros] = await Promise.all([ref.collection("codigos").get(), ref.collection("participantes").get(), ref.collection("miembros").get()]);
+      const lote = db.batch();
+      let cambios = 0;
+      codigos.forEach(c => {
+        const codigo = c.data().codigo;
+        if(codigo && !accesos.has(codigo)){ lote.set(db.collection("accesos").doc(codigo), { rid: doc.id, pid: c.id }); cambios++; }
+      });
+      const yaMiembros = new Set(miembros.docs.map(m => m.id));
+      parts.forEach(p => {
+        const uid = p.data().uid;
+        if(!uid || yaMiembros.has(uid)) return;
+        lote.set(ref.collection("miembros").doc(uid), { pid: p.id, uid, desde: Date.now() });
+        lote.set(db.collection("miembros").doc(uid), { rid: doc.id });
+        cambios++;
+      });
+      if(cambios) await lote.commit();
+    }
+  }catch(e){ console.error("No se pudieron completar los accesos", e); migracionHecha = false; }
 }
 
 // ===== Código personal (para entrar sin Google) =====
@@ -379,12 +433,12 @@ function generarCodigo(){
 }
 function mensajeCodigo(nombre, recorridoId, codigo){
   return `¡Hola ${nombre}! 🐾 Anotate en los días para cuidar a Milo y Zoe: ${linkTurnos(recorridoId)}\n` +
-    `Elegí tu nombre y entrá con este código: ${codigo} (si preferís, también podés entrar con Google).\n` +
+    `Entrá con tu código: ${codigo} (es personal, no lo compartas).\n` +
     `Las tareas de cada día están acá: ${linkDe(recorridoId)}`;
 }
 function mensajeTurnos(recorridoId){
   return `¡Hola! 🐾 Anotate en los días para cuidar a Milo y Zoe: ${linkTurnos(recorridoId)}\n` +
-    `Elegí un día libre, tu nombre, y entrá con tu código personal (te lo paso aparte) o con Google.`;
+    `Entrá con tu código personal de 6 números (te lo paso aparte) y elegí un día libre.`;
 }
 
 // ===== Crear recorrido =====
@@ -462,6 +516,7 @@ async function cargarRecorridos(){
   try{
     const snap = await db.collection("recorridos").orderBy("creado","desc").get();
     if(snap.empty){ listEl.innerHTML = "<p style='color:var(--ink-soft); font-size:14px;'>Todavía no creaste ningún recorrido.</p>"; return; }
+    completarAccesos(snap.docs);
     listEl.innerHTML = "";
     snap.forEach(doc => {
       const r = doc.data();
@@ -651,7 +706,7 @@ function renderPersonas(recorridoId, r, item, participantes, tareas, codigos, tu
              <button class="link-mini" data-p="copiar">Copiar mensaje</button>
              <a class="link-mini" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(mensajeCodigo(p.nombre, recorridoId, codigos[pid]))}">WhatsApp</a>
              <button class="link-mini" data-p="nuevo-codigo">Nuevo código</button>`
-          : `<button class="link-mini" data-p="nuevo-codigo">🔑 Generar código para entrar sin Google</button>`}</div>
+          : `<button class="link-mini" data-p="nuevo-codigo">🔑 Generar código (lo necesita para entrar)</button>`}</div>
       </div>
       <div class="acciones">
         <button class="btn small secondary" data-p="nombre">Nombre</button>
@@ -680,15 +735,18 @@ function renderPersonas(recorridoId, r, item, participantes, tareas, codigos, tu
       catch(err){ prompt("Copiá este mensaje:", mensajeCodigo(p.nombre, recorridoId, codigos[pid])); }
     });
     row.querySelector('[data-p="nuevo-codigo"]').addEventListener("click", async () => {
-      if(codigos[pid] && !confirm(`¿Generar un código nuevo para ${p.nombre}? El anterior deja de servir (si ya entró, sigue adentro en su celular).`)) return;
-      try{ await db.collection("recorridos").doc(recorridoId).collection("codigos").doc(pid).set({ codigo: generarCodigo() }); toast("Código nuevo generado"); }
+      if(codigos[pid] && !confirm(`¿Generar un código nuevo para ${p.nombre}? El anterior deja de servir para entrar (los celulares con los que ya entró siguen adentro; para sacarlos, usá Liberar).`)) return;
+      try{ await asignarCodigo(recorridoId, pid, codigos[pid]); toast("Código nuevo generado"); }
       catch(err){ console.error(err); toast("No se pudo generar el código"); }
     });
     const liberar = row.querySelector('[data-p="liberar"]');
     if(liberar) liberar.addEventListener("click", async () => {
-      if(!confirm(`¿Desvincular la cuenta de ${p.nombre}? Se cierra su acceso actual; puede volver a entrar con Google o con su código. Sus tareas tildadas se mantienen.`)) return;
-      await pref.update({ uid: null });
-      toast("Cuenta desvinculada");
+      if(!confirm(`¿Desvincular a ${p.nombre}? Se cierra su acceso en todos sus celulares; puede volver a entrar con su código. Sus tareas tildadas y sus turnos se mantienen.`)) return;
+      try{
+        await borrarMembresias(recorridoId, pid);
+        await pref.update({ uid: null });
+        toast("Cuenta desvinculada");
+      }catch(err){ console.error(err); toast("No se pudo desvincular"); }
     });
     row.querySelector('[data-p="quitar"]').addEventListener("click", async () => {
       if(!confirm(`¿Quitar a ${p.nombre} del recorrido? Se borran también sus tareas tildadas y los días en que se anotó.`)) return;
@@ -696,8 +754,10 @@ function renderPersonas(recorridoId, r, item, participantes, tareas, codigos, tu
         const rref = db.collection("recorridos").doc(recorridoId);
         const [tSnap, turSnap] = await Promise.all([rref.collection("tareas").where("pid","==",pid).get(), rref.collection("turnos").where("pid","==",pid).get()]);
         await Promise.all([...tSnap.docs, ...turSnap.docs].map(d => d.ref.delete()));
+        await borrarMembresias(recorridoId, pid);
         await pref.delete();
         await db.collection("recorridos").doc(recorridoId).collection("codigos").doc(pid).delete().catch(() => {});
+        if(codigos[pid]) await db.collection("accesos").doc(codigos[pid]).delete().catch(() => {});
         toast(`${p.nombre} quitado`);
       }catch(err){ console.error(err); toast("No se pudo quitar"); }
     });
@@ -762,7 +822,9 @@ async function eliminarRecorrido(id, nombre){
   try{
     const ref = db.collection("recorridos").doc(id);
     const borrados = [];
-    for(const sub of ["participantes","tareas","turnos","comentarios","codigos","ingresos"]){
+    const codigos = await ref.collection("codigos").get();
+    codigos.forEach(c => { if(c.data().codigo) borrados.push(db.collection("accesos").doc(c.data().codigo).delete()); });
+    for(const sub of ["participantes","tareas","turnos","comentarios","codigos","ingresos","miembros"]){
       const snap = await ref.collection(sub).get();
       snap.forEach(doc => borrados.push(doc.ref.delete()));
     }

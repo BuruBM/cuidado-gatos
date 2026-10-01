@@ -3,6 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow, noimageindex">
 <meta name="theme-color" content="#F2EEE1">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" href="icon-192.png">
@@ -127,7 +128,17 @@ function renderLista(personas){
   });
 }
 
-cargarRanking();
+// El ranking tiene nombres y fotos: solo para quienes entraron con su código (o el admin)
+let rankingCargado = false;
+auth.onAuthStateChanged(async user => {
+  const miembro = !!user && (esAdmin(user) || await esMiembroGlobal());
+  if(!miembro){
+    document.getElementById("podio").innerHTML = "";
+    document.getElementById("lista").innerHTML = `<div class='empty'>El ranking lo ven quienes cuidan a Milo y Zoe. <a href="index.html">Entrá con tu código</a> desde el inicio.</div>`;
+    return;
+  }
+  if(!rankingCargado){ rankingCargado = true; cargarRanking(); }
+});
 </script>
 </body>
 </html>
