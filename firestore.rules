@@ -54,10 +54,11 @@ service cloud.firestore {
         && (f == '' || request.time < timestamp.date(int(f.split('-')[0]), int(f.split('-')[1]), int(f.split('-')[2])) + duration.value((r.get('dias', 3) + 1) * 24 + 6, 'h'));
     }
 
-    // Solo las 7 tareas reales, en un día que exista dentro del recorrido
+    // Solo las tareas reales (las del checklist de visitas y las del viejo, de tomas de seco),
+    // en un día que exista dentro del recorrido
     function tareaValida(rid) {
       return request.resource.data.keys().hasOnly(['dia', 'key', 'pid', 'nombre', 'uid', 'creado'])
-        && request.resource.data.key in ['milo_seco_1', 'milo_seco_2', 'milo_humedo', 'zoe_seco_1', 'zoe_seco_2', 'zoe_humedo', 'piedras']
+        && request.resource.data.key in ['milo_comida', 'zoe_comida', 'gallito', 'agua', 'milo_seco_1', 'milo_seco_2', 'milo_humedo', 'zoe_seco_1', 'zoe_seco_2', 'zoe_humedo', 'piedras']
         && request.resource.data.dia is int
         && request.resource.data.dia >= 1
         && request.resource.data.dia <= get(/databases/$(database)/documents/recorridos/$(rid)).data.dias;

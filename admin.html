@@ -388,6 +388,30 @@ async function asignarCodigo(recorridoId, pid, viejo){
   return codigo;
 }
 
+// Pasa un recorrido (el que está en curso) del checklist viejo de tomas de seco al de visitas.
+// Las tomas ya tildadas se convierten en "comió de su taza" (a nombre de la primera que la hizo).
+async function pasarAVisita(recorridoId, r){
+  const ref = db.collection("recorridos").doc(recorridoId);
+  const snap = await ref.collection("tareas").get();
+  const porDia = {};
+  snap.forEach(d => { const t = d.data(); (porDia[t.dia] = porDia[t.dia] || []).push({ id: d.id, ...t }); });
+  const lote = db.batch();
+  Object.entries(porDia).forEach(([dia, lista]) => {
+    for(const gato of ["milo", "zoe"]){
+      const secos = lista.filter(t => t.key === gato + "_seco_1" || t.key === gato + "_seco_2").sort((a, b) => (a.creado || 0) - (b.creado || 0));
+      if(!secos.length) continue;
+      if(!lista.some(t => t.key === gato + "_comida")){
+        const p = secos[0];
+        lote.set(ref.collection("tareas").doc(dia + "_" + gato + "_comida"), { dia: Number(dia), key: gato + "_comida", pid: p.pid, nombre: p.nombre || "", uid: p.uid || null, creado: p.creado || Date.now() });
+      }
+      secos.forEach(t => lote.delete(ref.collection("tareas").doc(t.id)));
+    }
+  });
+  const hoy = r.fechaInicio ? diaDelRecorrido(r) : 1;
+  lote.update(ref, { checklist: "visita", checklistDesde: Math.min(Math.max(hoy, 1), r.dias || 3) });
+  await lote.commit();
+}
+
 // Saca a una persona de todos los celulares con los que entró al recorrido
 async function borrarMembresias(recorridoId, pid){
   const snap = await db.collection("recorridos").doc(recorridoId).collection("miembros").where("pid", "==", pid).get();
@@ -472,6 +496,8 @@ async function crearRecorrido(borrador){
       nombre, dias, fechaInicio,
       popupGlobal: popupGlobal || "",
       bienvenidaTurnos,
+      checklist: "visita",
+      checklistDesde: 1,
       activo: true,
       borrador,
       creado: Date.now()
@@ -531,6 +557,7 @@ async function cargarRecorridos(){
         <div class="link-box">
           <input type="text" readonly value="${url}">
           ${r.borrador ? '<button class="btn small" data-accion="publicar">Publicar</button>' : ""}
+          ${!esVisita(r) && !(r.fechaInicio && diaDelRecorrido(r) > (r.dias || 3) + 1) ? '<button class="btn small" data-accion="pasar-visita">🔄 Pasar al checklist de visitas</button>' : ""}
           <button class="btn small secondary" data-accion="copiar">Copiar</button>
           ${r.borrador ? "" : `<button class="btn small secondary" data-accion="archivar">${r.activo ? 'Archivar' : 'Reactivar'}</button>`}
           <a class="btn small secondary" href="${url}&modo=admin" style="text-decoration:none;">🔧 Tareas</a>
@@ -597,6 +624,12 @@ async function accionRecorrido(accion, id, r, item){
       if(!confirm(`¿Publicar "${r.nombre}"? Va a aparecer en la home y el link va a funcionar para todos.`)) return;
       await ref.update({ borrador: false });
       toast("Recorrido publicado");
+      cargarRecorridos();
+    }
+    if(accion === "pasar-visita"){
+      if(!confirm(`¿Pasar "${r.nombre}" al checklist de visitas?\n\n• Lo ya tildado se convierte: cualquier toma de seco de Milo cuenta como "Milo comió de su taza" (lo mismo con Zoe), a nombre de quien la hizo.\n• Desde hoy se pide el gallito al irse; los días anteriores no.`)) return;
+      await pasarAVisita(id, r);
+      toast("Listo: el recorrido usa el checklist de visitas");
       cargarRecorridos();
     }
     if(accion === "copiar-turnos"){
