@@ -34,7 +34,7 @@ async function pagina(cuenta, opts = {}){
   await page.route(/gstatic\.com\/firebasejs\/.*\/(firebase-[a-z-]+\.js)/, route =>
     route.fulfill({ contentType: "application/javascript", body: fs.readFileSync(path.join(__dirname, "node_modules/firebase/" + route.request().url().split("/").pop())) }));
   await page.route(/fonts\.googleapis|fonts\.gstatic/, r => r.abort());
-  await page.route("**/comun.js", route => {
+  await page.route(/\/comun\.js(\?.*)?$/, route => {
     let body = fs.readFileSync(REPO + "/comun.js", "utf8");
     body = body.replace("const auth = firebase.auth();", `const auth = firebase.auth();
 db.useEmulator("127.0.0.1", 8089); auth.useEmulator("http://127.0.0.1:9099", { disableWarnings: true });
