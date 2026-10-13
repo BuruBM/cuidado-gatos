@@ -136,6 +136,12 @@ const puntosOraculo = (tareas, pid) => Object.values(tareas).filter(t => t.pid =
   const link = await adm.getAttribute("#crearMsg a", "href");
   const rid = new URL(link).searchParams.get("r");
   RID = rid;
+  // Esta prueba recorre el checklist viejo (tomas de seco), el que conservan los recorridos pasados.
+  // El de visitas tiene su propia prueba (visita.cjs).
+  let creado = null;
+  await env.withSecurityRulesDisabled(async c => { creado = (await getDoc(doc(c.firestore(), "recorridos/" + rid))).data(); });
+  check(creado && creado.checklist === "visita", "un recorrido nuevo arranca con el checklist de visitas");
+  await env.withSecurityRulesDisabled(c => setDoc(doc(c.firestore(), "recorridos/" + rid), { checklist: "tomas" }, { merge: true }));
   check(!!rid, "recorrido creado, link: " + link.replace(/^https?:\/\/[^/]+/, ""));
   await adm.waitForFunction(() => document.querySelectorAll(".persona-row").length === 5, null, { timeout: 10000 });
   check(true, "admin ve las 5 personas");

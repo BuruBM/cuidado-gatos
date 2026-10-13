@@ -127,6 +127,9 @@ await t("día fuera del recorrido rechazado", assertFails(setDoc(doc(B,"recorrid
 await t("día 0 rechazado", assertFails(setDoc(doc(B,"recorridos/r1/tareas/0_zoe_seco_2"), {...base, dia:0, key:"zoe_seco_2"})));
 await t("día como texto rechazado", assertFails(setDoc(doc(B,"recorridos/r1/tareas/1_zoe_seco_2"), {...base, dia:"1", key:"zoe_seco_2"})));
 await t("campo extra (puntos) rechazado", assertFails(setDoc(doc(B,"recorridos/r1/tareas/1_zoe_seco_2"), {...base, dia:1, key:"zoe_seco_2", puntos:1000})));
+await t("checklist de visitas: Juan tilda 'comió de su taza'", assertSucceeds(setDoc(doc(B,"recorridos/r1/tareas/2_zoe_comida"), {...base, dia:2, key:"zoe_comida"})));
+await t("checklist de visitas: Juan tilda el gallito", assertSucceeds(setDoc(doc(B,"recorridos/r1/tareas/2_gallito"), {...base, dia:2, key:"gallito"})));
+await t("checklist de visitas: Juan tilda el agua", assertSucceeds(setDoc(doc(B,"recorridos/r1/tareas/2_agua"), {...base, dia:2, key:"agua"})));
 await t("Juan tilda la suya", assertSucceeds(setDoc(doc(B,"recorridos/r1/tareas/1_zoe_seco_2"), {...base, dia:1, key:"zoe_seco_2"})));
 await t("Lauti destilda la suya", assertSucceeds(deleteDoc(doc(celuA1,"recorridos/r1/tareas/1_milo_humedo"))));
 await t("sin código no tilda", assertFails(setDoc(doc(extraño,"recorridos/r1/tareas/3_milo_seco_1"), {dia:3,key:"milo_seco_1",pid:"lauti",uid:"uidX"})));

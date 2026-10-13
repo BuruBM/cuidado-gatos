@@ -292,6 +292,17 @@ const ADMIN = { sub:"uAdmin", email:"bm.blancom@gmail.com", email_verified:true,
     }, titulo);
     check(!tapado, `el acceso ${ancla} baja a la sección sin que los días tapen el título`);
   }
+  // Botón para volver arriba
+  await juli.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 0); });
+  await juli.waitForTimeout(200);
+  check(!(await juli.evaluate(() => document.getElementById("subirBtn").classList.contains("show"))), "arriba de todo no aparece el botón ↑");
+  await juli.evaluate(() => window.scrollTo(0, document.body.scrollHeight));
+  await juli.waitForTimeout(300);
+  check(await juli.isVisible("#subirBtn.show"), "al bajar aparece el botón ↑");
+  await juli.screenshot({ path: `${SHOTS}/06b-boton-subir.png` });
+  await juli.click("#subirBtn");
+  await juli.waitForFunction(() => window.scrollY < 5, null, { timeout: 5000 });
+  check(true, "el botón ↑ lleva arriba de todo");
   const fotos = await juli.evaluate(async () => { const imgs = [...document.querySelectorAll('img[src^="fotos/"]')]; imgs.forEach(i => i.loading = "eager"); await Promise.all(imgs.map(i => i.decode().catch(() => null))); return imgs.map(i => i.naturalWidth); });
   check(fotos.length === 3 && fotos.every(w => w > 0), `las fotos de la guía y la home cargan desde archivos aparte (${fotos.join(", ")})`);
   await juli.setViewportSize({ width: 360, height: 800 });

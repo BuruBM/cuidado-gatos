@@ -115,30 +115,53 @@ function slugify(nombre){
 }
 
 // ===== Tareas =====
-// Tomas de seco: obligatorias todos los días. Suplementos: suman si se hacen, no restan. Piedras: día por medio.
-const TAREAS_OBLIGATORIAS = ["milo_seco_1", "milo_seco_2", "zoe_seco_1", "zoe_seco_2"];
+// Hay dos checklists:
+// - El de visitas (recorrido.checklist === "visita"): quien va llena las tazas, les da a demanda mientras
+//   está, y antes de irse deja lo que quedó en el gallito (nadie duerme en la casa).
+//   Obligatorio: comida de Milo, comida de Zoe y el gallito. Húmedo y agua suman, no restan.
+//   Desde recorrido.checklistDesde (el día en que se pasó a este checklist) se pide el gallito.
+// - El viejo, de tomas de seco: lo conservan los recorridos de antes, para que no cambien sus resultados.
+// Piedras en los dos: se pueden tildar todos los días; restan solo si pasan dos días seguidos sin limpiar.
+const CHECKLIST_VISITA = [
+  { key:"milo_comida", group:"Milo", title:"Comió de su taza", detail:"Taza verde agua, un poco menos que llena. A demanda y de a poco, mientras estés" },
+  { key:"milo_humedo", group:"Milo", title:"Alimento húmedo + suplementos", detail:"Un poco de Royal Canin + 2 pastillas trituradas", etiqueta:"opcional · suma" },
+  { key:"zoe_comida", group:"Zoe", title:"Comió de su taza", detail:"Taza naranja, hasta la marca de la cinta. A demanda y de a poco (si solo pide ella, no)" },
+  { key:"zoe_humedo", group:"Zoe", title:"Alimento húmedo + suplementos", detail:"Sieger + 2 pastillas trituradas + 10 gotas Proteliv + 1ml Felifat", etiqueta:"opcional · suma" },
+  { key:"gallito", group:"Antes de irte", title:"Lo que quedó de las tazas, al gallito", detail:"En el living, siempre al irte: así tienen comida hasta que llegue el siguiente" },
+  { key:"agua", group:"General", title:"Agua limpia", detail:"En la cocina y en el cuarto. No hace falta todos los días", etiqueta:"opcional · suma" },
+  { key:"piedras", group:"General", title:"Limpiar piedras", detail:"Al menos día por medio, en cocina o baño", etiqueta:"día por medio" },
+];
+const CHECKLIST_VIEJO = [
+  { key:"milo_seco_1", group:"Milo", title:"Alimento seco (1ra toma)", detail:"Hypoallergenic (o Anallergenic si lo rechaza)" },
+  { key:"milo_seco_2", group:"Milo", title:"Alimento seco (2da toma)", detail:"Hypoallergenic (o Anallergenic si lo rechaza)" },
+  { key:"milo_humedo", group:"Milo", title:"Alimento húmedo + suplementos", detail:"Un poco de Royal Canin + 2 pastillas trituradas", etiqueta:"opcional · suma" },
+  { key:"zoe_seco_1", group:"Zoe", title:"Alimento seco (1ra toma)", detail:"Hypoallergenic" },
+  { key:"zoe_seco_2", group:"Zoe", title:"Alimento seco (2da toma)", detail:"Hypoallergenic" },
+  { key:"zoe_humedo", group:"Zoe", title:"Alimento húmedo + suplementos", detail:"Sieger + 2 pastillas trituradas + 10 gotas Proteliv + 1ml Felifat", etiqueta:"opcional · suma" },
+  { key:"piedras", group:"General", title:"Limpiar piedras", detail:"Al menos día por medio, en cocina o baño", etiqueta:"día por medio" },
+];
+const OBLIGATORIAS_VIEJO = ["milo_seco_1", "milo_seco_2", "zoe_seco_1", "zoe_seco_2"];
 
-function tareasDelDia(){
-  return [
-    { key:"milo_seco_1", group:"Milo", title:"Alimento seco (1ra toma)", detail:"Hypoallergenic (o Anallergenic si lo rechaza)" },
-    { key:"milo_seco_2", group:"Milo", title:"Alimento seco (2da toma)", detail:"Hypoallergenic (o Anallergenic si lo rechaza)" },
-    { key:"milo_humedo", group:"Milo", title:"Alimento húmedo + suplementos", detail:"Un poco de Royal Canin + 2 pastillas trituradas", etiqueta:"opcional · suma" },
-    { key:"zoe_seco_1", group:"Zoe", title:"Alimento seco (1ra toma)", detail:"Hypoallergenic" },
-    { key:"zoe_seco_2", group:"Zoe", title:"Alimento seco (2da toma)", detail:"Hypoallergenic" },
-    { key:"zoe_humedo", group:"Zoe", title:"Alimento húmedo + suplementos", detail:"Sieger + 2 pastillas trituradas + 10 gotas Proteliv + 1ml Felifat", etiqueta:"opcional · suma" },
-    { key:"piedras", group:"General", title:"Limpiar piedras", detail:"Al menos día por medio, en cocina o baño", etiqueta:"día por medio" },
-  ];
+function esVisita(r){ return !!r && r.checklist === "visita"; }
+function tareasDelDia(r){ return esVisita(r) ? CHECKLIST_VISITA : CHECKLIST_VIEJO; }
+// Lo que hay que hacer sí o sí ese día (para el %, el festejo y la barra del día)
+function obligatoriasDelDia(r, d){
+  if(!esVisita(r)) return OBLIGATORIAS_VIEJO;
+  return d >= (r.checklistDesde || 1) ? ["milo_comida", "zoe_comida", "gallito"] : ["milo_comida", "zoe_comida"];
 }
 
-// Puntos por tarea: las que más cuestan valen más
-const PUNTOS = { seco:10, humedo:15, piedras:20 };
+// Puntos por tarea: las que más cuestan valen más (las de los recorridos viejos conservan su valor)
+const PUNTOS = { comida:10, seco:10, gallito:15, humedo:15, agua:5, piedras:20 };
 function puntosDeTarea(key){
+  key = String(key);
   if(key === "piedras") return PUNTOS.piedras;
-  if(String(key).includes("humedo")) return PUNTOS.humedo;
-  return PUNTOS.seco;
+  if(key === "gallito") return PUNTOS.gallito;
+  if(key === "agua") return PUNTOS.agua;
+  if(key.includes("humedo")) return PUNTOS.humedo;
+  return PUNTOS.comida;
 }
-function puntosPosiblesPorDia(){
-  return tareasDelDia().reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
+function puntosPosiblesPorDia(r){
+  return tareasDelDia(r).reduce((suma, t) => suma + puntosDeTarea(t.key), 0);
 }
 
 // Fecha de hoy "AAAA-MM-DD" en hora local (toISOString usa UTC y en Argentina cambia de día a las 21 hs)
@@ -190,7 +213,7 @@ function calcularVictoria(tareas, pid, recorrido, hastaDia, turnos){
   let pendientes = 0;
   dias.forEach(d => {
     if(d > hasta) return;
-    TAREAS_OBLIGATORIAS.forEach(k => { if(!tareas[d + "_" + k]) pendientes++; });
+    obligatoriasDelDia(recorrido, d).forEach(k => { if(!tareas[d + "_" + k]) pendientes++; });
     if(d >= 2 && !tareas[d + "_piedras"] && !tareas[(d-1) + "_piedras"]) pendientes++;
   });
   if(hechas + pendientes === 0) return null;   // todavía no llegó ninguno de sus días
