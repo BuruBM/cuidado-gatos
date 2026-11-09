@@ -417,6 +417,12 @@
   .turnos-home .th-barra i.ok{background:var(--success); border:1px solid var(--success);}
   .turnos-home .th-ir{flex:none; font-weight:700; font-size:13px; white-space:nowrap;}
   html.dark .turnos-home .th-barra i.ok{background:#93B566; border-color:#93B566;}
+  .encuesta-home{display:flex; align-items:center; gap:10px; width:100%; background:var(--teal); color:#F7F3EA; border-radius:14px; padding:11px 13px; margin-bottom:8px; font-family:'Karla',sans-serif; text-decoration:none; box-shadow:var(--shadow);}
+  .encuesta-home .eh-e{font-size:22px; flex:none;}
+  .encuesta-home .eh-t{flex:1; min-width:0; font-size:13px; line-height:1.3; opacity:.92;}
+  .encuesta-home .eh-t b{display:block; font-size:14.5px; opacity:1;}
+  .encuesta-home .eh-ir{flex:none; background:#F7F3EA; color:var(--teal); border-radius:100px; padding:5px 11px; font-weight:700; font-size:13px;}
+  html.dark .encuesta-home{background:#2F5A53;}
   html.dark .tu-recorrido{background:#2F5A53;}
   .landing-footer{text-align:center; margin-top:40px; font-size:12px; color:var(--ink-soft);}
   .landing-footer a{color:var(--ink-soft);}
@@ -535,6 +541,7 @@
     <div class="entrar-home-fila"><input class="gate-input codigo-input" id="homeCodigoInput" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="Código de 6 números"><button class="btn" id="homeCodigoBtn">Entrar</button></div>
     <div class="gate-error" id="homeCodigoError"></div>
   </div>
+  <div id="encuestaHome"></div>
   <div id="tuRecorrido" style="display:none;"></div>
   <div id="turnosHome"></div>
   <div id="activosWrap" style="display:none;">
@@ -2106,6 +2113,7 @@ function mostrarHomeDeMiembro(miembro){
   if(!miembro){
     ["activosWrap", "pasadosWrap", "tuRecorrido"].forEach(id => document.getElementById(id).style.display = "none");
     document.getElementById("turnosHome").innerHTML = "";
+    document.getElementById("encuestaHome").innerHTML = "";
     recorridosActivos = null;
   }
 }
@@ -2270,10 +2278,10 @@ async function loadRecorridosActivos(){
   const el = document.getElementById("recorridosActivos");
   try{
     // El admin ve todos; cada persona, solo los recorridos en los que está
-    let docs;
+    let docs, mios = {};
     if(esAdmin(usuario)) docs = (await db.collection("recorridos").get()).docs;
     else {
-      const mios = await misRecorridos();
+      mios = await misRecorridos();
       docs = (await Promise.all(Object.keys(mios).map(rid => db.collection("recorridos").doc(rid).get().catch(() => null))))
         .filter(d => d && d.exists);
     }
@@ -2299,6 +2307,7 @@ async function loadRecorridosActivos(){
     document.getElementById("pasadosWrap").style.display = pasados.length ? "block" : "none";
     renderTuRecorrido();
     renderTurnosHome(activos);
+    renderEncuestaHome(docs, mios);
   }catch(e){
     console.error(e);
     el.innerHTML = "<p style='color:#A65136; font-size:14px;'>Error cargando recorridos.</p>";
@@ -2323,6 +2332,21 @@ async function renderTurnosHome(activos){
       <span class="th-ir">Ver →</span></a>`;
   }));
   el.innerHTML = lineas.join("");
+}
+
+// Encuesta de después del viaje: a quien está en un recorrido con la encuesta abierta y todavía no
+// la respondió, un acceso arriba de todo (desaparece al responderla)
+async function renderEncuestaHome(docs, mios){
+  const el = document.getElementById("encuestaHome");
+  const pendientes = await Promise.all(docs.filter(d => d.data().encuesta && !d.data().borrador && mios[d.id]).map(async doc => {
+    try{ return (await doc.ref.collection("encuestaHecha").doc(mios[doc.id]).get()).exists ? null : doc; }
+    catch(e){ console.warn(e); return null; }
+  }));
+  el.innerHTML = pendientes.filter(Boolean).map(doc => {
+    const nombre = pendientes.filter(Boolean).length > 1 ? ` (${escapeHtml(doc.data().nombre || "")})` : "";
+    return `<a class="encuesta-home" href="encuesta.html?r=${encodeURIComponent(doc.id)}"><span class="eh-e">📋</span>
+      <span class="eh-t"><b>¿Cómo te fue cuidando a Milo y Zoe?</b>Contanos en 5 minutos${nombre}</span><span class="eh-ir">Responder</span></a>`;
+  }).join("");
 }
 
 function botonRecorrido(doc, pasado){

@@ -4,9 +4,10 @@
   "scripts": {
     "reglas": "firebase emulators:exec --only firestore --project demo-gates \"node reglas.mjs\"",
     "recorrido": "firebase emulators:exec --only firestore,auth --project michis-en-casa \"node recorrido-multiple.cjs\"",
-    "test": "npm run reglas && npm run recorrido && npm run turnos && npm run visita",
+    "test": "npm run reglas && npm run recorrido && npm run turnos && npm run visita && npm run encuesta",
     "turnos": "firebase emulators:exec --only firestore,auth --project michis-en-casa \"node turnos.cjs\"",
-    "visita": "firebase emulators:exec --only firestore,auth --project michis-en-casa \"node visita.cjs\""
+    "visita": "firebase emulators:exec --only firestore,auth --project michis-en-casa \"node visita.cjs\"",
+    "encuesta": "firebase emulators:exec --only firestore,auth --project michis-en-casa \"node encuesta.cjs\""
   },
   "devDependencies": {
     "@firebase/rules-unit-testing": "^3.0.0",
