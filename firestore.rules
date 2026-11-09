@@ -101,6 +101,39 @@ service cloud.firestore {
       return request.time < fechaTs(fecha) + duration.value(27, 'h');
     }
 
+    // ===== Encuesta =====
+    function encuestaAbierta(rid) {
+      let r = get(/databases/$(database)/documents/recorridos/$(rid)).data;
+      return r.get('encuesta', false) == true && r.get('borrador', false) != true;
+    }
+    function textoOk(r, k) {
+      return !(k in r) || (r[k] is string && r[k].size() <= 1000);
+    }
+    function opcionOk(r, k) {
+      return !(k in r) || (r[k] is string && r[k].size() <= 120);
+    }
+    function listaOk(r, k) {
+      return !(k in r) || (r[k] is list && r[k].size() <= 10);
+    }
+    // Solo las preguntas de la encuesta; el nombre, si está, tiene que ser el de quien responde
+    function encuestaValida(rid) {
+      let d = request.resource.data;
+      let r = d.r;
+      return d.keys().hasOnly(['r', 'nombre', 'v'])
+        && r is map
+        && r.size() > 0
+        && r.keys().hasOnly(['general', 'codigo', 'partes', 'puntos', 'confuso', 'cambio', 'tranquilidad', 'foto',
+                             'hoy', 'otrosUsos', 'nps', 'modelo', 'pagarias', 'cuidarPago', 'extra'])
+        && (!('general' in r) || (r.general is int && r.general >= 1 && r.general <= 5))
+        && (!('nps' in r) || (r.nps is int && r.nps >= 0 && r.nps <= 10))
+        && textoOk(r, 'confuso') && textoOk(r, 'cambio') && textoOk(r, 'extra')
+        && opcionOk(r, 'codigo') && opcionOk(r, 'puntos') && opcionOk(r, 'foto')
+        && opcionOk(r, 'modelo') && opcionOk(r, 'pagarias') && opcionOk(r, 'cuidarPago')
+        && listaOk(r, 'partes') && listaOk(r, 'tranquilidad') && listaOk(r, 'hoy') && listaOk(r, 'otrosUsos')
+        && (!('nombre' in d)
+            || d.nombre == get(/databases/$(database)/documents/recorridos/$(rid)/participantes/$(pidEn(rid))).data.nombre);
+    }
+
     function comentarioPropio() {
       return signedIn() && resource.data.get('uid', null) == request.auth.uid;
     }
@@ -212,6 +245,29 @@ service cloud.firestore {
           && request.resource.data.keys().hasOnly(['pid', 'codigo'])
           && request.resource.data.codigo == codigoDe(rid, request.resource.data.pid);
         allow read, delete: if isAdmin();
+      }
+
+      // ===== Encuesta de después del viaje (la abre el admin: recorrido.encuesta == true) =====
+      // encuestaHecha/{pid} marca que esa persona ya respondió, sin decir qué. Las respuestas van en
+      // encuestas/{id}, con un id al azar y sin pid ni hora: si alguien elige no mostrar su nombre, ni el
+      // admin puede saber cuál es la suya. Las dos se escriben en el mismo lote, una sola vez por persona.
+      match /encuestaHecha/{pid} {
+        allow get: if isAdmin() || soyParticipante(rid, pid);
+        allow list: if isAdmin();
+        allow create: if miembroDe(rid)
+          && pidEn(rid) == pid
+          && encuestaAbierta(rid)
+          && request.resource.data.keys().hasOnly(['listo'])
+          && request.resource.data.listo == true;
+        allow delete: if isAdmin();
+      }
+      match /encuestas/{eid} {
+        allow read, delete: if isAdmin();
+        allow create: if miembroDe(rid)
+          && encuestaAbierta(rid)
+          && !exists(/databases/$(database)/documents/recorridos/$(rid)/encuestaHecha/$(pidEn(rid)))
+          && existsAfter(/databases/$(database)/documents/recorridos/$(rid)/encuestaHecha/$(pidEn(rid)))
+          && encuestaValida(rid);
       }
 
       match /comentarios/{cid} {

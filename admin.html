@@ -530,6 +530,9 @@ function etiquetaEstado(r){
 function linkDe(id){
   return `${location.origin}${location.pathname.replace("admin.html","index.html")}?r=${id}`;
 }
+function linkEncuesta(id){
+  return `${location.origin}${location.pathname.replace("admin.html","encuesta.html")}?r=${id}`;
+}
 function linkTurnos(id){
   return `${location.origin}${location.pathname.replace("admin.html","turnos.html")}?r=${id}`;
 }
@@ -570,6 +573,8 @@ async function cargarRecorridos(){
              <button class="link-mini" data-accion="copiar-turnos">Copiar mensaje</button>
              <a class="link-mini" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(mensajeTurnos(id))}">WhatsApp</a>`
           : `🗓️ Para usar turnos, poné la fecha de inicio (Editar).`}</div>
+        ${r.borrador ? "" : `<div class="turnos-admin"><b>📋 Encuesta${r.encuesta ? " (abierta)" : ""}</b>
+          <a class="link-mini" href="${linkEncuesta(id)}">${r.encuesta ? "Ver respuestas" : "Ver y abrir"}</a></div>`}
         <div class="edit-box" style="display:none; border-top:1px solid var(--line); margin-top:6px; padding-top:12px;">
           <label>Nombre del recorrido</label>
           <input type="text" class="e-nombre" value="${escapeHtml(r.nombre||'')}">

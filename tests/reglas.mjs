@@ -238,6 +238,55 @@ await t("publicado: Lauti ya lo ve", assertSucceeds(getDoc(doc(A,"recorridos/bor
 await t("publicado: Lauti ya puede anotarse", assertSucceeds(setDoc(tRef(A, fTurno(2), "borr"), turno(fTurno(2), "lauti", "uidA"))));
 await t("borrador: un usuario no lo publica", assertFails(updateDoc(doc(A,"recorridos/borr"), {borrador:true})));
 
+// ===== Encuesta de después del viaje =====
+// Lauti (uidA) y Juan (uidB) están en "enc"; Pame (uidC) está en otro recorrido
+const C = env.authenticatedContext("uidC", { firebase:{ sign_in_provider:"anonymous" } }).firestore();
+await sinReglas(async f => {
+  await setDoc(doc(f,"recorridos/enc"), {nombre:"Viaje", dias:3, activo:false, fechaInicio:"2020-01-01"});   // ya terminó
+  await setDoc(doc(f,"recorridos/enc/participantes/lauti"), {nombre:"Lauti"});
+  await setDoc(doc(f,"recorridos/enc/participantes/juan"), {nombre:"Juan"});
+  await setDoc(doc(f,"recorridos/otro"), {nombre:"Otro", dias:3, activo:true, encuesta:true});
+  await setDoc(doc(f,"recorridos/otro/participantes/pame"), {nombre:"Pame"});
+});
+await hacerMiembro("enc", "uidA", "lauti");
+await hacerMiembro("enc", "uidB", "juan");
+await hacerMiembro("otro", "uidC", "pame");
+const responder = (db, rid, pid, datos, idResp = "x" + Math.random().toString(36).slice(2)) => {
+  const b = writeBatch(db);
+  b.set(doc(db,`recorridos/${rid}/encuestaHecha/${pid}`), {listo:true});
+  b.set(doc(db,`recorridos/${rid}/encuestas/${idResp}`), datos);
+  return b.commit();
+};
+const resp = { r:{ general:5, codigo:"Muy fácil", partes:["Turnos para anotarme"], nps:9, confuso:"nada" }, v:1 };
+await t("encuesta: cerrada, no se responde", assertFails(responder(A, "enc", "lauti", resp)));
+await t("encuesta: un usuario no la abre", assertFails(updateDoc(doc(A,"recorridos/enc"), {encuesta:true})));
+await t("encuesta: el admin la abre", assertSucceeds(updateDoc(doc(admin,"recorridos/enc"), {encuesta:true})));
+await t("encuesta: sin código no se responde", assertFails(responder(extraño, "enc", "lauti", resp)));
+await t("encuesta: alguien de otro recorrido no responde", assertFails(responder(C, "enc", "lauti", resp)));
+await t("encuesta: no se responde a nombre de otro", assertFails(responder(A, "enc", "juan", resp)));
+await t("encuesta: sin la marca no se guardan respuestas", assertFails(setDoc(doc(A,"recorridos/enc/encuestas/suelta"), resp)));
+await t("encuesta: pregunta inventada rechazada", assertFails(responder(A, "enc", "lauti", { r:{ hackeo:"x" }, v:1 })));
+await t("encuesta: nota fuera de 1 a 5 rechazada", assertFails(responder(A, "enc", "lauti", { r:{ general:9 }, v:1 })));
+await t("encuesta: NPS fuera de 0 a 10 rechazado", assertFails(responder(A, "enc", "lauti", { r:{ nps:11 }, v:1 })));
+await t("encuesta: texto larguísimo rechazado", assertFails(responder(A, "enc", "lauti", { r:{ extra:"x".repeat(1001) }, v:1 })));
+await t("encuesta: sin respuestas rechazada", assertFails(responder(A, "enc", "lauti", { r:{}, v:1 })));
+await t("encuesta: campo extra (pid) rechazado", assertFails(responder(A, "enc", "lauti", { ...resp, pid:"lauti" })));
+await t("encuesta: con el nombre de otro rechazada", assertFails(responder(A, "enc", "lauti", { ...resp, nombre:"Juan" })));
+await t("encuesta: Lauti responde sin nombre (con el recorrido ya terminado)", assertSucceeds(responder(A, "enc", "lauti", resp)));
+await t("encuesta: Lauti no responde dos veces", assertFails(responder(A, "enc", "lauti", resp)));
+await t("encuesta: Lauti no borra su marca para responder de nuevo", assertFails(deleteDoc(doc(A,"recorridos/enc/encuestaHecha/lauti"))));
+await t("encuesta: Lauti ve que ya respondió", assertSucceeds(getDoc(doc(A,"recorridos/enc/encuestaHecha/lauti"))));
+await t("encuesta: Lauti no ve si Juan respondió", assertFails(getDoc(doc(A,"recorridos/enc/encuestaHecha/juan"))));
+await t("encuesta: Lauti no lee las respuestas", assertFails(getDocs(collection(A,"recorridos/enc/encuestas"))));
+await t("encuesta: Juan responde con su nombre", assertSucceeds(responder(B, "enc", "juan", { ...resp, nombre:"Juan" })));
+await t("encuesta: el admin lee las respuestas", assertSucceeds(getDocs(collection(admin,"recorridos/enc/encuestas"))));
+await t("encuesta: el admin ve quiénes respondieron", assertSucceeds(getDocs(collection(admin,"recorridos/enc/encuestaHecha"))));
+await t("encuesta: hay 2 respuestas, una con nombre", (async () => {
+  const s = await getDocs(collection(admin,"recorridos/enc/encuestas"));
+  if(s.size !== 2 || s.docs.filter(d => d.data().nombre).length !== 1) throw new Error("respuestas inesperadas");
+})());
+await t("encuesta: nadie edita una respuesta", assertFails(updateDoc(doc(B,"recorridos/enc/encuestas/" + (await getDocs(collection(admin,"recorridos/enc/encuestas"))).docs[0].id), {v:2})));
+
 console.log(`\n${n} pruebas OK`);
 await env.cleanup();
 process.exit(0);
